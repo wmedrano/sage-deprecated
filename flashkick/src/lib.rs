@@ -13,6 +13,9 @@ mod scm_obj;
 pub use scm_obj::Scm;
 
 /// Throw a scheme error.
+///
+/// # Safety
+/// Makes calls to C.
 pub unsafe fn throw<I, IT>(key: Scm, args: I)
 where
     I: IntoIterator<Item = Scm, IntoIter = IT>,

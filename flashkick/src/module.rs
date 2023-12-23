@@ -3,6 +3,9 @@ use std::ffi::{c_void, CStr};
 use crate::{ffi, Scm};
 
 /// Initialize a new module.
+///
+/// # Safety
+/// Makes calls to C.
 pub unsafe fn init<T: Module>(module: T) {
     unsafe {
         let module_ptr: *const T = &module;
@@ -17,6 +20,9 @@ pub trait Module {
     fn name() -> &'static CStr;
 
     /// Initialize the module. `ctx` can be used to register subroutines within the module.
+    ///
+    /// # Safety
+    /// Usually makes calls to C through `ctx` object.
     unsafe fn init(&self, ctx: &mut ModuleInitContext);
 }
 
@@ -27,21 +33,30 @@ pub struct ModuleInitContext {
 
 impl ModuleInitContext {
     /// Define a subroutine in the module.
+    ///
+    /// # Safety
+    /// Makes calls to C.
     pub unsafe fn define_subr_0(&mut self, name: &CStr, subr: extern "C" fn(Scm) -> Scm) {
         ffi::scm_c_define_gsubr(name.as_ptr(), 0, 0, 0, subr as _);
-        ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut() as *mut c_void);
+        ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut::<c_void>());
     }
 
     /// Define a subroutine in the module.
+    ///
+    /// # Safety
+    /// Makes calls to C.
     pub unsafe fn define_subr_1(&mut self, name: &CStr, subr: extern "C" fn(Scm) -> Scm) {
         ffi::scm_c_define_gsubr(name.as_ptr(), 1, 0, 0, subr as _);
-        ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut() as *mut c_void);
+        ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut::<c_void>());
     }
 
     /// Define a subroutine in the module.
+    ///
+    /// # Safety
+    /// Makes calls to C.
     pub unsafe fn define_subr_2(&mut self, name: &CStr, subr: extern "C" fn(Scm, Scm) -> Scm) {
         ffi::scm_c_define_gsubr(name.as_ptr(), 2, 0, 0, subr as _);
-        ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut() as *mut c_void);
+        ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut::<c_void>());
     }
 }
 
