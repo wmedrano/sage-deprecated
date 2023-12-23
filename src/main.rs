@@ -12,7 +12,7 @@ use crossterm::{
 use flashkick::Scm;
 use ratatui::prelude::CrosstermBackend;
 use scm_obj_cache::ScmObjCache;
-use terminal_backend::iter_crossterm_events;
+use terminal_backend::{event_to_scm, iter_crossterm_events};
 
 pub mod app;
 pub mod buffer;
@@ -43,7 +43,7 @@ pub extern "C" fn inner_main(_: *mut c_void, argc: i32, argv: *mut *mut i8) {
     unsafe {
         flashkick::ffi::scm_c_define_gsubr(
             CStr::from_bytes_with_nul(b"run-willy\0").unwrap().as_ptr(),
-            0,
+            1,
             0,
             0,
             scm_run_willy as _,
@@ -52,11 +52,11 @@ pub extern "C" fn inner_main(_: *mut c_void, argc: i32, argv: *mut *mut i8) {
     }
 }
 
-extern "C" fn scm_run_willy() -> flashkick::Scm {
-    match run_willy() {
+extern "C" fn scm_run_willy(event_handler: flashkick::Scm) -> flashkick::Scm {
+    match run_willy(event_handler) {
         Ok(()) => flashkick::Scm::EOL,
         Err(err) => unsafe {
-            let err_sym = ScmObjCache::singleton().error_sym;
+            let err_sym = ScmObjCache::singleton().symbols.error;
             let msg = Scm::new_string(&err.to_string());
             let args = Scm::with_reversed_list(std::iter::once(msg));
             flashkick::ffi::scm_throw(err_sym.0, args.0);
@@ -64,13 +64,13 @@ extern "C" fn scm_run_willy() -> flashkick::Scm {
     }
 }
 
-fn run_willy() -> Result<()> {
+fn run_willy(event_handler: flashkick::Scm) -> Result<()> {
     // Setup
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
 
     // Run
-    let result = run_willy_with_terminal(CrosstermBackend::new(stdout()));
+    let result = run_willy_with_terminal(CrosstermBackend::new(stdout()), event_handler);
 
     // Cleanup
     stdout().execute(LeaveAlternateScreen)?;
@@ -78,11 +78,20 @@ fn run_willy() -> Result<()> {
     result
 }
 
-fn run_willy_with_terminal(terminal: CrosstermBackend<Stdout>) -> Result<()> {
+fn run_willy_with_terminal(
+    terminal: CrosstermBackend<Stdout>,
+    event_handler: flashkick::Scm,
+) -> Result<()> {
     let mut willy = App::new(terminal)?;
     loop {
         willy.render()?;
-        match willy.handle_events(iter_crossterm_events())? {
+        let events = iter_crossterm_events().inspect(|e| unsafe {
+            if let Ok(e) = e {
+                let scm_event = event_to_scm(e);
+                flashkick::ffi::scm_call_1(event_handler.0, scm_event.0);
+            }
+        });
+        match willy.handle_events(events)? {
             app::AppControlState::Continue => (),
             app::AppControlState::Exit => return Ok(()),
         };

@@ -6,11 +6,18 @@ static CACHE_CELL: OnceLock<ScmObjCache> = OnceLock::new();
 
 /// An object containing many common scheme objects.
 pub struct ScmObjCache {
-    pub error_sym: Scm,
+    pub symbols: Symbols,
 }
 
-unsafe impl Send for ScmObjCache {}
-unsafe impl Sync for ScmObjCache {}
+pub struct Symbols {
+    pub char: Scm,
+    pub error: Scm,
+    pub event_type: Scm,
+    pub key_press: Scm,
+}
+
+unsafe impl Send for Symbols {}
+unsafe impl Sync for Symbols {}
 
 impl ScmObjCache {
     /// Get the singleton reference to all the objects.
@@ -20,7 +27,12 @@ impl ScmObjCache {
 
     unsafe fn init() -> ScmObjCache {
         ScmObjCache {
-            error_sym: Scm::new_symbol("willy-error"),
+            symbols: Symbols {
+                char: Scm::new_symbol("char"),
+                error: Scm::new_symbol("willy-error"),
+                event_type: Scm::new_symbol("event-type"),
+                key_press: Scm::new_symbol("key-press"),
+            },
         }
     }
 }
