@@ -1,0 +1,9 @@
+[profile.release]
+# Required for profiling with tools like `cargo flamegraph`.
+debug = true
+
+[workspace]
+resolver = "2"
+members = [
+	"willy",
+]
