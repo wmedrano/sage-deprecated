@@ -34,7 +34,7 @@ impl Buffer {
     }
 
     /// Iterate through all lines.
-    pub fn iter_lines<'a>(&'a self) -> impl 'a + ExactSizeIterator + Iterator<Item = &'a str> {
+    pub fn iter_lines(&self) -> impl ExactSizeIterator + Iterator<Item = &str> {
         self.lines.iter().map(|s| s.as_str())
     }
 
