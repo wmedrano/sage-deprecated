@@ -1,14 +1,6 @@
-[package]
-name = "willy"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
-anyhow = "1.0"
-crossterm = "0.27"
-flashkick = "0.1"
-indoc = "2"
-ratatui = "0.25"
+[workspace]
+resolver = "2"
+members = [
+  "flashkick",
+  "willy",
+]

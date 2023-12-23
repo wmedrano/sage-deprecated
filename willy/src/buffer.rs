@@ -103,8 +103,13 @@ mod tests {
     #[test]
     fn push_chars_to_buffer_with_text_appends() {
         let mut buffer = Buffer::with_text("name: ");
+        assert_eq!(buffer.to_text(), "name: ");
+
         buffer.push_chars(['w', 'i', 'l', 'l', 'y']);
         assert_eq!(buffer.to_text(), "name: willy");
+
+        buffer.push_chars("\nfunction: editor".chars());
+        assert_eq!(buffer.to_text(), "name: willy\nfunction: editor");
     }
 
     #[test]
