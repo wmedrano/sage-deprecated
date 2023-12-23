@@ -1,4 +1,5 @@
 use std::{
+    ffi::{c_void, CStr},
     io::{stdout, Stdout},
     time::{Duration, Instant},
 };
@@ -10,6 +11,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use flashkick::Scm;
 use ratatui::prelude::CrosstermBackend;
 
 pub mod app;
@@ -17,12 +19,55 @@ pub mod buffer;
 pub mod widgets;
 
 fn main() -> Result<()> {
+    let mut args: Vec<*const i8> = vec![
+        CStr::from_bytes_with_nul(b"-l\0").unwrap().as_ptr(),
+        CStr::from_bytes_with_nul(b"scheme/main.scm\0")
+            .unwrap()
+            .as_ptr(),
+    ];
+    unsafe {
+        flashkick::ffi::scm_boot_guile(
+            args.len() as i32,
+            args.as_mut_ptr() as *mut *mut i8,
+            Some(inner_main),
+            std::ptr::null_mut(),
+        );
+    }
+    Ok(())
+}
+
+pub extern "C" fn inner_main(_: *mut c_void, argc: i32, argv: *mut *mut i8) {
+    unsafe {
+        flashkick::ffi::scm_c_define_gsubr(
+            CStr::from_bytes_with_nul(b"run-willy\0").unwrap().as_ptr(),
+            0,
+            0,
+            0,
+            scm_run_willy as _,
+        );
+        flashkick::ffi::scm_shell(argc, argv);
+    }
+}
+
+extern "C" fn scm_run_willy() -> flashkick::Scm {
+    match run_willy() {
+        Ok(()) => flashkick::Scm::EOL,
+        Err(err) => unsafe {
+            let err_sym = Scm::new_symbol("willy-error");
+            let msg = Scm::new_string(&err.to_string());
+            let args = Scm::with_reversed_list(std::iter::once(msg));
+            flashkick::ffi::scm_throw(err_sym.0, args.0);
+        },
+    }
+}
+
+fn run_willy() -> Result<()> {
     // Setup
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
 
     // Run
-    let result = run_app(CrosstermBackend::new(stdout()));
+    let result = run_willy_with_terminal(CrosstermBackend::new(stdout()));
 
     // Cleanup
     stdout().execute(LeaveAlternateScreen)?;
@@ -30,7 +75,7 @@ fn main() -> Result<()> {
     result
 }
 
-fn run_app(terminal: CrosstermBackend<Stdout>) -> Result<()> {
+fn run_willy_with_terminal(terminal: CrosstermBackend<Stdout>) -> Result<()> {
     let mut willy = App::new(terminal)?;
     loop {
         willy.render()?;
