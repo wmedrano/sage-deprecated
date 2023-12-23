@@ -1,9 +1,14 @@
-[profile.release]
-# Required for profiling with tools like `cargo flamegraph`.
-debug = true
+[package]
+name = "willy"
+version = "0.1.0"
+edition = "2021"
 
-[workspace]
-resolver = "2"
-members = [
-	"willy",
-]
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0"
+crossterm = "0.27"
+flashkick = "0.1"
+indoc = "2"
+ratatui = "0.25"

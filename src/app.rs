@@ -1,8 +1,18 @@
-use anyhow::{bail, Result};
+//! Contains the logic for running the main application.
+use anyhow::Result;
 use crossterm::event;
 use ratatui::{prelude::Backend, Terminal};
 
 use crate::{buffer::Buffer, widgets::buffer::BufferWidget};
+
+/// What the current control state is.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AppControlState {
+    /// The app should continue running.
+    Continue,
+    /// The app should exit.
+    Exit,
+}
 
 /// Runs the `willy` application.
 pub struct App<B: Backend> {
@@ -42,9 +52,6 @@ impl<B: Backend> App<B> {
 
     /// Render the current state of the `App`.
     pub fn render(&mut self) -> Result<()> {
-        if self.state.should_exit {
-            bail!("Exit requested.");
-        }
         self.terminal.draw(|frame| {
             let area = frame.size();
             frame.render_widget(BufferWidget::new(&self.state.buffer), area);
@@ -56,11 +63,15 @@ impl<B: Backend> App<B> {
     pub fn handle_events(
         &mut self,
         events: impl IntoIterator<Item = Result<event::Event>>,
-    ) -> Result<()> {
+    ) -> Result<AppControlState> {
         for event_or_err in events.into_iter() {
             self.handle_event(event_or_err?);
         }
-        Ok(())
+        Ok(if self.state.should_exit {
+            AppControlState::Exit
+        } else {
+            AppControlState::Continue
+        })
     }
 
     fn handle_event(&mut self, e: event::Event) {
@@ -135,18 +146,20 @@ mod tests {
     fn ctr_c_exits_app() {
         let mut app = App::new_dummy(80, 20).unwrap();
 
-        app.handle_events(std::iter::once(Ok(make_key_press('c'))))
+        let res = app
+            .handle_events(std::iter::once(Ok(make_key_press('c'))))
             .unwrap();
-        assert!(app.render().is_ok());
+        assert_eq!(res, AppControlState::Continue);
 
-        app.handle_events(std::iter::once(Ok(event::Event::Key(event::KeyEvent {
-            code: event::KeyCode::Char('c'),
-            modifiers: event::KeyModifiers::CONTROL,
-            kind: event::KeyEventKind::Press,
-            state: event::KeyEventState::empty(),
-        }))))
-        .unwrap();
-        assert!(app.render().is_err());
+        let res = app
+            .handle_events(std::iter::once(Ok(event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Char('c'),
+                modifiers: event::KeyModifiers::CONTROL,
+                kind: event::KeyEventKind::Press,
+                state: event::KeyEventState::empty(),
+            }))))
+            .unwrap();
+        assert_eq!(res, AppControlState::Exit);
     }
 
     #[test]
