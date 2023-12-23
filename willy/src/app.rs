@@ -25,7 +25,7 @@ impl App<ratatui::backend::TestBackend> {
 
     /// Get the underlying buffer for the test backend.
     pub fn buffer(&self) -> &ratatui::prelude::Buffer {
-        &self.terminal.backend().buffer()
+        self.terminal.backend().buffer()
     }
 }
 
