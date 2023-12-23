@@ -1,7 +1,4 @@
-use std::{
-    ffi::CStr,
-    io::{stdout, Stdout},
-};
+use std::io::{stdout, Stdout};
 
 use anyhow::Result;
 use app::App;
@@ -15,29 +12,9 @@ use terminal_backend::{event_to_scm, iter_crossterm_events};
 
 mod app;
 mod buffer;
-mod fk;
+mod scm_module;
 mod terminal_backend;
 mod widgets;
-
-#[no_mangle]
-pub extern "C" fn scm_init_willy_module() {
-    unsafe { fk::init_module(WillyModule) };
-}
-
-pub struct WillyModule;
-
-impl fk::Module for WillyModule {
-    fn name() -> &'static CStr {
-        CStr::from_bytes_with_nul(b"willy\0").unwrap()
-    }
-
-    unsafe fn init(&self, ctx: &mut fk::ModuleInitContext) {
-        ctx.define_subr_1(
-            CStr::from_bytes_with_nul(b"run-willy\0").unwrap(),
-            scm_run_willy,
-        );
-    }
-}
 
 extern "C" fn scm_run_willy(event_handler: flashkick::Scm) -> flashkick::Scm {
     match run_willy(event_handler) {
@@ -45,7 +22,7 @@ extern "C" fn scm_run_willy(event_handler: flashkick::Scm) -> flashkick::Scm {
         Err(err) => unsafe {
             let err_sym = Scm::new_symbol("willy-error");
             let msg = Scm::new_string(&err.to_string());
-            let args = Scm::with_reversed_list(std::iter::once(msg));
+            let args = Scm::with_list(std::iter::once(msg));
             flashkick::ffi::scm_throw(err_sym.0, args.0);
         },
     }
@@ -57,7 +34,7 @@ fn run_willy(event_handler: flashkick::Scm) -> Result<()> {
     enable_raw_mode()?;
 
     // Run
-    let result = run_willy_with_terminal(CrosstermBackend::new(stdout()), event_handler);
+    let result = run_willy_with_terminal(event_handler, CrosstermBackend::new(stdout()));
 
     // Cleanup
     stdout().execute(LeaveAlternateScreen)?;
@@ -66,8 +43,8 @@ fn run_willy(event_handler: flashkick::Scm) -> Result<()> {
 }
 
 fn run_willy_with_terminal(
-    terminal: CrosstermBackend<Stdout>,
     event_handler: flashkick::Scm,
+    terminal: CrosstermBackend<Stdout>,
 ) -> Result<()> {
     let mut willy = App::new(terminal)?;
     loop {

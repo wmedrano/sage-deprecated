@@ -152,8 +152,6 @@ dependencies = [
 [[package]]
 name = "flashkick"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3be3e52bbf65379c350ee944168020cbf72af00453d7d41b7e3c5626799f995"
 dependencies = [
  "bindgen",
  "pkg-config",
