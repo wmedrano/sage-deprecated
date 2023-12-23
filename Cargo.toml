@@ -1,9 +1,13 @@
-[profile.release]
-# Required for profiling with tools like `cargo flamegraph`.
-debug = true
+[package]
+name = "willy"
+version = "0.1.0"
+edition = "2021"
 
-[workspace]
-resolver = "2"
-members = [
-	"willy",
-]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+crossterm = "0.27"
+flashkick = "0.1"
+indoc = "2"
+ratatui = "0.25"

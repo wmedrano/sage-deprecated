@@ -79,7 +79,10 @@ fn run_willy_with_terminal(terminal: CrosstermBackend<Stdout>) -> Result<()> {
     let mut willy = App::new(terminal)?;
     loop {
         willy.render()?;
-        willy.handle_events(iter_crossterm_events())?;
+        match willy.handle_events(iter_crossterm_events())? {
+            app::AppControlState::Continue => (),
+            app::AppControlState::Exit => return Ok(()),
+        };
     }
 }
 
