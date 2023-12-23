@@ -22,13 +22,13 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
-      - name: Install Rust Test Tools
-        run: |
-          # Installs nexte.st for nicer test output.
-          curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - name: Install Cargo LLVM Cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Install Cargo Nextest
+        uses: taiki-e/install-action@nextest
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1
       - name: Build
         run: cargo build --verbose
       - name: Test
-        run: cargo nextest run
+        run: cargo llvm-cov nextest run
