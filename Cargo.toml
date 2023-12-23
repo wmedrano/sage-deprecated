@@ -3,6 +3,9 @@ name = "willy"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 anyhow = "1.0"
 crossterm = "0.27"

@@ -1,5 +1,5 @@
 use std::{
-    ffi::{c_void, CStr},
+    ffi::CStr,
     io::{stdout, Stdout},
 };
 
@@ -11,44 +11,31 @@ use crossterm::{
 };
 use flashkick::Scm;
 use ratatui::prelude::CrosstermBackend;
-use scm_obj_cache::ScmObjCache;
 use terminal_backend::{event_to_scm, iter_crossterm_events};
 
-pub mod app;
-pub mod buffer;
-pub mod scm_obj_cache;
-pub mod terminal_backend;
-pub mod widgets;
+mod app;
+mod buffer;
+mod fk;
+mod terminal_backend;
+mod widgets;
 
-fn main() -> Result<()> {
-    // Boot Guile by loading scheme/main.scm.
-    let mut args: Vec<*const i8> = vec![
-        CStr::from_bytes_with_nul(b"-l\0").unwrap().as_ptr(),
-        CStr::from_bytes_with_nul(b"scheme/main.scm\0")
-            .unwrap()
-            .as_ptr(),
-    ];
-    unsafe {
-        flashkick::ffi::scm_boot_guile(
-            args.len() as i32,
-            args.as_mut_ptr() as *mut *mut i8,
-            Some(inner_main),
-            std::ptr::null_mut(),
-        );
-    }
-    Ok(())
+#[no_mangle]
+pub extern "C" fn scm_init_willy_module() {
+    unsafe { fk::init_module(WillyModule) };
 }
 
-pub extern "C" fn inner_main(_: *mut c_void, argc: i32, argv: *mut *mut i8) {
-    unsafe {
-        flashkick::ffi::scm_c_define_gsubr(
-            CStr::from_bytes_with_nul(b"run-willy\0").unwrap().as_ptr(),
-            1,
-            0,
-            0,
-            scm_run_willy as _,
+pub struct WillyModule;
+
+impl fk::Module for WillyModule {
+    fn name() -> &'static CStr {
+        CStr::from_bytes_with_nul(b"willy\0").unwrap()
+    }
+
+    unsafe fn init(&self, ctx: &mut fk::ModuleInitContext) {
+        ctx.define_subr_1(
+            CStr::from_bytes_with_nul(b"run-willy\0").unwrap(),
+            scm_run_willy,
         );
-        flashkick::ffi::scm_shell(argc, argv);
     }
 }
 
@@ -56,7 +43,7 @@ extern "C" fn scm_run_willy(event_handler: flashkick::Scm) -> flashkick::Scm {
     match run_willy(event_handler) {
         Ok(()) => flashkick::Scm::EOL,
         Err(err) => unsafe {
-            let err_sym = ScmObjCache::singleton().symbols.error;
+            let err_sym = Scm::new_symbol("willy-error");
             let msg = Scm::new_string(&err.to_string());
             let args = Scm::with_reversed_list(std::iter::once(msg));
             flashkick::ffi::scm_throw(err_sym.0, args.0);

@@ -1,3 +1,4 @@
+//! Contains the logic for running the main application.
 use anyhow::Result;
 use crossterm::event;
 use ratatui::{prelude::Backend, Terminal};

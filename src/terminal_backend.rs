@@ -4,8 +4,6 @@ use anyhow::{anyhow, Result};
 use crossterm::event;
 use flashkick::Scm;
 
-use crate::scm_obj_cache::ScmObjCache;
-
 /// Iterate through all crossterm events in the queue.
 pub fn iter_crossterm_events() -> impl Iterator<Item = Result<event::Event>> {
     let timeout = Duration::from_millis(16);
@@ -25,7 +23,6 @@ pub fn iter_crossterm_events() -> impl Iterator<Item = Result<event::Event>> {
 
 /// Convert an event into a Scheme object.
 pub unsafe fn event_to_scm(e: &event::Event) -> Scm {
-    let symbols = &ScmObjCache::singleton().symbols;
     match e {
         event::Event::Key(event::KeyEvent {
             code: event::KeyCode::Char(ch),
@@ -33,11 +30,11 @@ pub unsafe fn event_to_scm(e: &event::Event) -> Scm {
             ..
         }) => Scm::with_alist(
             [
-                (symbols.char, Scm::new_string(&ch.to_string())),
-                (symbols.event_type, symbols.key_press),
+                (Scm::new_keyword("char"), Scm::new_string(&ch.to_string())),
+                (Scm::new_keyword("event-type"), Scm::new_symbol("key-press")),
             ]
             .into_iter(),
         ),
-        _ => Scm::EOL,
+        _ => Scm::with_alist(std::iter::empty()),
     }
 }

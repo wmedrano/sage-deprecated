@@ -5,9 +5,10 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    /// Create a new empty `Buffer`.
+    /// Create a new blank buffer.
+    #[cfg(test)]
     pub fn new() -> Buffer {
-        Buffer::default()
+        Buffer { lines: Vec::new() }
     }
 
     /// Create a new buffer from text.
@@ -19,16 +20,15 @@ impl Buffer {
 
     /// Create a new scratch buffer. The buffer contains a friendly message.
     pub fn new_scratch() -> Buffer {
-        Buffer {
-            lines: vec![
-                ";; Welcome to Willy!".to_string(),
-                ";; A Scheme configured text editor.".to_string(),
-                "".to_string(),
-            ],
-        }
+        Buffer::with_text(
+            r#";; Welcome to Willy!
+;; A Scheme configured text editor.
+"#,
+        )
     }
 
     /// Convert the buffer into text
+    #[cfg(test)]
     pub fn to_text(&self) -> String {
         self.lines.join("\n")
     }
@@ -88,6 +88,7 @@ mod tests {
     #[test]
     fn push_char_adds_new_char() {
         let mut buffer = Buffer::new();
+        assert_eq!(buffer.to_text(), "");
         buffer.push_char('a');
         assert_eq!(buffer.to_text(), "a");
     }
