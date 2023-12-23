@@ -1,20 +1,12 @@
-use std::io::{stdout, Stdout};
-
 use anyhow::{bail, Result};
-use crossterm::{
-    event,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-use ratatui::{prelude::CrosstermBackend, Terminal};
+use crossterm::event;
+use ratatui::{prelude::Backend, Terminal};
 
 use crate::{buffer::Buffer, widgets::buffer::BufferWidget};
 
-type CrossTerminal = Terminal<CrosstermBackend<Stdout>>;
-
 /// Runs the `willy` application.
-pub struct App {
-    terminal: CrossTerminal,
+pub struct App<B: Backend> {
+    terminal: Terminal<B>,
     state: State,
 }
 
@@ -24,12 +16,10 @@ pub struct State {
     should_exit: bool,
 }
 
-impl App {
+impl<B: Backend> App<B> {
     /// Create a new `App`.
-    pub fn new() -> Result<App> {
-        stdout().execute(EnterAlternateScreen)?;
-        enable_raw_mode()?;
-        let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    pub fn new(backend: B) -> Result<App<B>> {
+        let mut terminal = Terminal::new(backend)?;
         terminal.clear()?;
         Ok(App {
             terminal,
@@ -50,54 +40,57 @@ impl App {
     }
 
     /// Handle all events and update the `App` state accordingly.
-    pub fn handle_events(&mut self) -> Result<()> {
-        while event::poll(std::time::Duration::from_millis(16))? {
-            let raw_event = event::read()?;
-            match raw_event {
-                event::Event::Key(event::KeyEvent {
-                    code: event::KeyCode::Char('c'),
-                    modifiers: event::KeyModifiers::CONTROL,
-                    kind: event::KeyEventKind::Press,
-                    ..
-                }) => self.state.should_exit = true,
-                event::Event::Key(event::KeyEvent {
-                    code: event::KeyCode::Enter,
-                    modifiers: event::KeyModifiers::NONE,
-                    kind: event::KeyEventKind::Press,
-                    ..
-                }) => self.state.buffer.push_line(""),
-                event::Event::Key(event::KeyEvent {
-                    code: event::KeyCode::Backspace,
-                    modifiers: event::KeyModifiers::NONE,
-                    kind: event::KeyEventKind::Press,
-                    ..
-                }) => {
-                    self.state.buffer.pop_char();
-                }
-                event::Event::Key(event::KeyEvent {
-                    code: event::KeyCode::Char(ch),
-                    modifiers: event::KeyModifiers::NONE,
-                    kind: event::KeyEventKind::Press,
-                    ..
-                }) => self.state.buffer.push_char(ch),
-                event::Event::Key(event::KeyEvent {
-                    code: event::KeyCode::Char(ch),
-                    modifiers: event::KeyModifiers::SHIFT,
-                    kind: event::KeyEventKind::Press,
-                    ..
-                }) => self.state.buffer.push_chars(ch.to_uppercase()),
-                _ => (),
-            }
+    pub fn handle_events(
+        &mut self,
+        events: impl Iterator<Item = Result<event::Event>>,
+    ) -> Result<()> {
+        for event_or_err in events {
+            self.handle_event(event_or_err?);
         }
         Ok(())
     }
+
+    fn handle_event(&mut self, e: event::Event) {
+        match e {
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Char('c'),
+                modifiers: event::KeyModifiers::CONTROL,
+                kind: event::KeyEventKind::Press,
+                ..
+            }) => self.state.should_exit = true,
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Enter,
+                modifiers: event::KeyModifiers::NONE,
+                kind: event::KeyEventKind::Press,
+                ..
+            }) => self.state.buffer.push_line(""),
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Backspace,
+                modifiers: event::KeyModifiers::NONE,
+                kind: event::KeyEventKind::Press,
+                ..
+            }) => {
+                self.state.buffer.pop_char();
+            }
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Char(ch),
+                modifiers: event::KeyModifiers::NONE,
+                kind: event::KeyEventKind::Press,
+                ..
+            }) => self.state.buffer.push_char(ch),
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Char(ch),
+                modifiers: event::KeyModifiers::SHIFT,
+                kind: event::KeyEventKind::Press,
+                ..
+            }) => self.state.buffer.push_chars(ch.to_uppercase()),
+            _ => (),
+        }
+    }
 }
 
-impl Drop for App {
-    fn drop(&mut self) {
-        let _ = stdout().execute(LeaveAlternateScreen);
-        let _ = disable_raw_mode();
-    }
+impl<B: Backend> Drop for App<B> {
+    fn drop(&mut self) {}
 }
 
 impl Default for State {
