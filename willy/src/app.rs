@@ -102,10 +102,6 @@ impl<B: Backend> App<B> {
     }
 }
 
-impl<B: Backend> Drop for App<B> {
-    fn drop(&mut self) {}
-}
-
 impl Default for State {
     fn default() -> State {
         State {
