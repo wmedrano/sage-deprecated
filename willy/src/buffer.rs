@@ -10,6 +10,13 @@ impl Buffer {
         Buffer::default()
     }
 
+    /// Create a new buffer from text.
+    pub fn with_text(text: &str) -> Buffer {
+        Buffer {
+            lines: text.split('\n').map(str::to_string).collect(),
+        }
+    }
+
     /// Create a new scratch buffer. The buffer contains a friendly message.
     pub fn new_scratch() -> Buffer {
         Buffer {
@@ -21,31 +28,31 @@ impl Buffer {
         }
     }
 
-    /// Iterate through all lines.
-    pub fn iter_lines<'a>(&'a self) -> impl 'a + Iterator<Item = &'a str> {
-        self.lines.iter().map(|s| s.as_str())
+    /// Convert the buffer into text
+    pub fn to_text(&self) -> String {
+        self.lines.join("\n")
     }
 
-    /// Push a new line onto the buffer.
-    pub fn push_line(&mut self, line: &str) {
-        self.lines.push(line.to_string());
+    /// Iterate through all lines.
+    pub fn iter_lines<'a>(&'a self) -> impl 'a + ExactSizeIterator + Iterator<Item = &'a str> {
+        self.lines.iter().map(|s| s.as_str())
     }
 
     /// Add a new character to the buffer.
     pub fn push_char(&mut self, ch: char) {
         if self.lines.is_empty() {
-            self.push_line("");
+            self.lines.push(String::new());
         }
         if ch == '\n' {
-            self.push_line("");
+            self.lines.push(String::new());
             return;
         }
         self.lines.last_mut().unwrap().push(ch);
     }
 
     /// Push several characters onto the buffer.
-    pub fn push_chars(&mut self, chs: impl Iterator<Item = char>) {
-        for ch in chs {
+    pub fn push_chars(&mut self, chs: impl IntoIterator<Item = char>) {
+        for ch in chs.into_iter() {
             self.push_char(ch);
         }
     }
@@ -71,5 +78,45 @@ impl std::fmt::Display for Buffer {
             writeln!(f, "{line}")?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_char_adds_new_char() {
+        let mut buffer = Buffer::new();
+        buffer.push_char('a');
+        assert_eq!(buffer.to_text(), "a");
+    }
+
+    #[test]
+    fn push_chars_adds_new_chars() {
+        let mut buffer = Buffer::new();
+        buffer.push_chars(['a', 'b', 'c', 'd', '\n', 'e', '\n']);
+        assert_eq!(buffer.to_text(), "abcd\ne\n");
+    }
+
+    #[test]
+    fn push_chars_to_buffer_with_text_appends() {
+        let mut buffer = Buffer::with_text("name: ");
+        buffer.push_chars(['w', 'i', 'l', 'l', 'y']);
+        assert_eq!(buffer.to_text(), "name: willy");
+    }
+
+    #[test]
+    fn pop_char_on_empty_buffer_is_none() {
+        let mut buffer = Buffer::new();
+        assert_eq!(buffer.pop_char(), None);
+    }
+
+    #[test]
+    fn pop_char_removes_last_char() {
+        let mut buffer = Buffer::with_text("typoo");
+        assert_eq!(buffer.to_text(), "typoo");
+        assert_eq!(buffer.pop_char(), Some('o'));
+        assert_eq!(buffer.to_text(), "typo");
     }
 }

@@ -31,4 +31,4 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: Test
-        run: cargo llvm-cov nextest run
+        run: cargo llvm-cov nextest

@@ -76,7 +76,7 @@ impl<B: Backend> App<B> {
                 modifiers: event::KeyModifiers::NONE,
                 kind: event::KeyEventKind::Press,
                 ..
-            }) => self.state.buffer.push_line(""),
+            }) => self.state.buffer.push_char('\n'),
             event::Event::Key(event::KeyEvent {
                 code: event::KeyCode::Backspace,
                 modifiers: event::KeyModifiers::NONE,
