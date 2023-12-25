@@ -24,6 +24,10 @@ impl Scm {
         self.0 == Self::UNDEFINED.0
     }
 
+    pub fn is_eol(&self) -> bool {
+        self.0 == Self::EOL.0
+    }
+
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn new_bool(b: bool) -> Scm {
@@ -381,6 +385,15 @@ mod tests {
                 assert_eq!(Scm::new_f64(9.5).to_bool(), true);
                 assert_eq!(Scm::new_f64(-10.5).to_bool(), true);
             });
+        }
+    }
+
+    #[test]
+    fn with_list_on_empty_iter_returns_eol() {
+        unsafe {
+            with_guile(|| {
+                assert!(Scm::with_list(std::iter::empty()).is_eol());
+            })
         }
     }
 }

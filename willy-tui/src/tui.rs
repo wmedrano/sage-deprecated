@@ -5,7 +5,7 @@ use flashkick::foreign_object::ForeignObjectType;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 
 pub struct Tui {
-    terminal: Terminal<CrosstermBackend<Stdout>>,
+    _terminal: Terminal<CrosstermBackend<Stdout>>,
 }
 
 impl ForeignObjectType for Tui {
@@ -23,7 +23,9 @@ impl Tui {
             crossterm::event::EnableMouseCapture
         )?;
         terminal.hide_cursor()?;
-        Ok(Tui { terminal })
+        Ok(Tui {
+            _terminal: terminal,
+        })
     }
 }
 

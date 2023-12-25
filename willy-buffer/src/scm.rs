@@ -61,14 +61,16 @@ extern "C" fn scm_buffer_to_text(buffer: Scm) -> Scm {
 }
 
 extern "C" fn scm_buffer_insert_string(buffer: Scm, string: Scm) -> Scm {
-    let buffer = unsafe { Buffer::from_scm_mut(&buffer) };
+    let mut buffer = buffer;
+    let buffer = unsafe { Buffer::from_scm_mut(&mut buffer) };
     let string = unsafe { string.to_string() };
     buffer.push_chars(string.chars());
     Scm::EOL
 }
 
 extern "C" fn scm_buffer_pop_char(buffer: Scm) -> Scm {
-    let buffer = unsafe { Buffer::from_scm_mut(&buffer) };
+    let mut buffer = buffer;
+    let buffer = unsafe { Buffer::from_scm_mut(&mut buffer) };
     match buffer.pop_char() {
         Some(c) => unsafe {
             let mut text_buffer = [0u8; 4];

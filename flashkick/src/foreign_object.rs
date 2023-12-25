@@ -49,7 +49,7 @@ pub trait ForeignObjectType: 'static + Sized {
     ///
     /// # Safety
     /// Calls C code.
-    unsafe fn from_scm<'a>(obj: &'a Scm) -> &'a Self {
+    unsafe fn from_scm(obj: &Scm) -> &Self {
         let raw_ptr: *mut Self = Self::ptr_from_scm(*obj);
         if raw_ptr.is_null() {
             throw_error(anyhow!("object is null"));
@@ -62,7 +62,7 @@ pub trait ForeignObjectType: 'static + Sized {
     ///
     /// # Safety
     /// Calls C code.
-    unsafe fn from_scm_mut<'a>(obj: &'a Scm) -> &'a mut Self {
+    unsafe fn from_scm_mut(obj: &mut Scm) -> &mut Self {
         let ptr = Self::ptr_from_scm(*obj);
         if ptr.is_null() {
             throw_error(anyhow!("object is null"));

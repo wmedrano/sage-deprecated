@@ -5,6 +5,10 @@ use tui::Tui;
 
 mod tui;
 
+/// Initialize the `(willy tui)` module.
+///
+/// # Safety
+/// Calls unsafe code.
 #[no_mangle]
 pub unsafe extern "C" fn scm_init_willy_tui_module() {
     TuiModule.init();
