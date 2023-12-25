@@ -3,4 +3,5 @@ resolver = "2"
 members = [
   "flashkick",
   "willy-buffer",
+  "willy-tui",
 ]

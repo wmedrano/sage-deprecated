@@ -6,12 +6,12 @@ use flashkick::{
     Scm,
 };
 
+use crate::Buffer;
+
 #[no_mangle]
 pub unsafe extern "C" fn scm_init_willy_buffer_module() {
     BufferModule.init();
 }
-
-use crate::Buffer;
 
 struct BufferModule;
 

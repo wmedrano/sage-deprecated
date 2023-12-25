@@ -285,25 +285,102 @@ impl From<ffi::SCM> for Scm {
 
 #[cfg(test)]
 mod tests {
+    use crate::with_guile;
+
     use super::*;
 
     #[test]
-    fn test_car() {
+    fn car_returns_first_cell() {
         unsafe {
-            let a = Scm::new_i32(1);
-            let b = Scm::new_i32(2);
-            let c = Scm::new_cons(a, b);
-            assert_eq!(c.car().to_i32(), 1i32);
+            with_guile(|| {
+                let a = Scm::new_i32(1);
+                let b = Scm::new_i32(2);
+                let c = Scm::new_cons(a, b);
+                assert_eq!(c.car().to_i32(), 1i32);
+            })
+        };
+    }
+
+    #[test]
+    fn cdr_returns_second_cell() {
+        unsafe {
+            with_guile(|| {
+                let a = Scm::new_i32(1);
+                let b = Scm::new_i32(2);
+                let c = Scm::new_cons(a, b);
+                assert_eq!(c.cdr().to_i32(), 2i32);
+            })
         }
     }
 
     #[test]
-    fn test_cdr() {
+    fn type_conversions_are_equal_before_and_after() {
         unsafe {
-            let a = Scm::new_i32(1);
-            let b = Scm::new_i32(2);
-            let c = Scm::new_cons(a, b);
-            assert_eq!(c.cdr().to_i32(), 2i32);
+            with_guile(|| {
+                assert_eq!(Scm::new_bool(true).to_bool(), true);
+                assert_eq!(Scm::new_bool(false).to_bool(), false);
+                assert_eq!(Scm::new_u8(1).to_u8(), 1);
+                assert_eq!(Scm::new_i8(-2).to_i8(), -2);
+                assert_eq!(Scm::new_u16(3).to_u16(), 3);
+                assert_eq!(Scm::new_i16(-4).to_i16(), -4);
+                assert_eq!(Scm::new_u32(5).to_u32(), 5);
+                assert_eq!(Scm::new_i32(-6).to_i32(), -6);
+                assert_eq!(Scm::new_u64(7).to_u64(), 7);
+                assert_eq!(Scm::new_i64(-8).to_i64(), -8);
+                assert_eq!(Scm::new_f64(9.5).to_f64(), 9.5);
+                assert_eq!(Scm::new_f64(-10.5).to_f64(), -10.5);
+                assert_eq!(
+                    Scm::new_string("my string").to_string(),
+                    "my string".to_string()
+                );
+                assert_eq!(
+                    Scm::new_symbol("my symbol").to_symbol(),
+                    "my symbol".to_string()
+                );
+                assert_eq!(
+                    Scm::new_keyword("my keyword").to_keyword(),
+                    "my keyword".to_string()
+                );
+                assert_eq!(
+                    Scm::with_list([100, 101, 102, 103, 104, 105].map(|i| { Scm::new_u32(i) }))
+                        .iter()
+                        .map(|scm| scm.to_u32())
+                        .collect::<Vec<u32>>(),
+                    vec![100, 101, 102, 103, 104, 105],
+                );
+            })
+        }
+    }
+
+    #[test]
+    fn scheme_falsey_values() {
+        unsafe {
+            with_guile(|| {
+                assert_eq!(Scm::new_bool(false).to_bool(), false);
+                assert_eq!(Scm::FALSE.to_bool(), false);
+                assert_eq!(Scm::ELISP_NIL.to_bool(), false);
+            });
+        }
+    }
+
+    #[test]
+    fn scheme_truthy_values() {
+        unsafe {
+            with_guile(|| {
+                assert_eq!(Scm::TRUE.to_bool(), true);
+                assert_eq!(Scm::EOL.to_bool(), true);
+                assert_eq!(Scm::UNDEFINED.to_bool(), true);
+                assert_eq!(Scm::new_u8(1).to_bool(), true);
+                assert_eq!(Scm::new_i8(-2).to_bool(), true);
+                assert_eq!(Scm::new_u16(3).to_bool(), true);
+                assert_eq!(Scm::new_i16(-4).to_bool(), true);
+                assert_eq!(Scm::new_u32(5).to_bool(), true);
+                assert_eq!(Scm::new_i32(-6).to_bool(), true);
+                assert_eq!(Scm::new_u64(7).to_bool(), true);
+                assert_eq!(Scm::new_i64(-8).to_bool(), true);
+                assert_eq!(Scm::new_f64(9.5).to_bool(), true);
+                assert_eq!(Scm::new_f64(-10.5).to_bool(), true);
+            });
         }
     }
 }

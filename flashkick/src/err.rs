@@ -19,7 +19,11 @@ impl<T, E: std::fmt::Display> ResultToScm for Result<T, E> {
     }
 }
 
-unsafe fn throw_error(err: impl std::fmt::Display) -> ! {
+/// Throw an error.
+///
+/// # Safety
+/// Calls C code.
+pub unsafe fn throw_error(err: impl std::fmt::Display) -> ! {
     let key = Scm::new_symbol("rust-error");
     let scm_args = Scm::with_list(std::iter::once(Scm::new_string(&err.to_string())));
     crate::ffi::scm_throw(key.0, scm_args.0)
