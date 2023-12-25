@@ -25,10 +25,12 @@ impl Module for BufferModule {
         ctx.define_subr_1(
             CStr::from_bytes_with_nul(b"new-buffer\0").unwrap(),
             scm_new_buffer,
+            0,
         );
         ctx.define_subr_1(
             CStr::from_bytes_with_nul(b"buffer-to-text\0").unwrap(),
             scm_buffer_to_text,
+            1,
         );
         ctx.define_subr_2(
             CStr::from_bytes_with_nul(b"buffer-insert-string\0").unwrap(),
@@ -38,8 +40,12 @@ impl Module for BufferModule {
 }
 
 extern "C" fn scm_new_buffer(text: Scm) -> Scm {
-    let text = unsafe { text.to_string() };
-    let buffer = Box::new(Buffer::with_text(&text));
+    let buffer = if text.is_undefined() {
+        Box::new(Buffer::new())
+    } else {
+        let text = unsafe { text.to_string() };
+        Box::new(Buffer::with_text(&text))
+    };
     unsafe { Buffer::to_scm(buffer) }
 }
 

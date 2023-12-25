@@ -17,6 +17,13 @@ impl Scm {
     /// Equivalent to `'()` in Scheme.
     pub const EOL: Scm = Scm(crate::scm_pack!(crate::scm_makiflag_bits!(3)));
 
+    /// Undefined.
+    pub const UNDEFINED: Scm = Scm(crate::scm_pack!(crate::scm_makiflag_bits!(9)));
+
+    pub fn is_undefined(&self) -> bool {
+        self.0 == Self::UNDEFINED.0
+    }
+
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn new_bool(b: bool) -> Scm {
