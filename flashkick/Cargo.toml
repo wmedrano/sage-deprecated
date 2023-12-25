@@ -6,7 +6,8 @@ homepage = "https://github.com/wmedrano/willy"
 description = "Wrapper for GNU Guile Scheme."
 license = "LGPL-3.0-only"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+anyhow = "1"
 
 [build-dependencies.bindgen]
 version = "0.66"
