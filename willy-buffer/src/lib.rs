@@ -1,12 +1,19 @@
+use flashkick::foreign_object::ForeignObjectType;
+
+mod scm;
+
 /// Buffer holds editable text.
 #[derive(Default)]
 pub struct Buffer {
     lines: Vec<String>,
 }
 
+impl ForeignObjectType for Buffer {
+    const NAME: &'static str = "willy-buffer";
+}
+
 impl Buffer {
     /// Create a new blank buffer.
-    #[cfg(test)]
     pub fn new() -> Buffer {
         Buffer { lines: Vec::new() }
     }
@@ -18,17 +25,7 @@ impl Buffer {
         }
     }
 
-    /// Create a new scratch buffer. The buffer contains a friendly message.
-    pub fn new_scratch() -> Buffer {
-        Buffer::with_text(
-            r#";; Welcome to Willy!
-;; A Scheme configured text editor.
-"#,
-        )
-    }
-
     /// Convert the buffer into text
-    #[cfg(test)]
     pub fn to_text(&self) -> String {
         self.lines.join("\n")
     }

@@ -13,3 +13,6 @@ version = "0.66"
 
 [build-dependencies.pkg-config]
 version = "0.3"
+
+[dependencies]
+anyhow = "1"
