@@ -1,2 +1,4 @@
 *.log
 /target/
+/perf.data
+/flamegraph.svg
