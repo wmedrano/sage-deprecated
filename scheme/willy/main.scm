@@ -19,7 +19,7 @@
   (set! should-run #t)
   (set! main-tui (new-tui))
   (while should-run
-    (draw main-tui (list main-buffer log-buffer))
+    (tui-draw main-tui (list main-buffer log-buffer))
     (handle-all-events!)
     (usleep 10000))
   (delete-tui main-tui)

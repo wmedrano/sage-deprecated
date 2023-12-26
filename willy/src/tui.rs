@@ -12,29 +12,33 @@ use ratatui::{
 use crate::buffer::Buffer;
 
 pub struct Tui {
-    terminal: Terminal<CrosstermBackend<Stdout>>,
+    terminal: TerminalImpl,
 }
 
 impl ForeignObjectType for Tui {
     const NAME: &'static str = "willy-tui";
 }
 
+#[derive(Copy, Clone)]
+pub enum BackendType {
+    Default,
+}
+
 impl Tui {
-    pub fn new() -> Result<Tui> {
-        let backend = CrosstermBackend::new(std::io::stdout());
-        let mut terminal = Terminal::new(backend)?;
-        crossterm::terminal::enable_raw_mode()?;
-        crossterm::execute!(
-            std::io::stdout(),
-            crossterm::terminal::EnterAlternateScreen,
-            crossterm::event::EnableMouseCapture
-        )?;
-        terminal.hide_cursor()?;
+    pub fn new(backend_type: BackendType) -> Result<Tui> {
+        let terminal = TerminalImpl::new(backend_type)?;
         Ok(Tui { terminal })
     }
 
+    pub fn size(&self) -> Result<(u16, u16)> {
+        let sz = match &self.terminal {
+            TerminalImpl::Default(t) => t.size()?,
+        };
+        Ok((sz.width, sz.height))
+    }
+
     pub fn draw<'a>(&mut self, buffers: impl Clone + Iterator<Item = &'a Buffer>) -> Result<()> {
-        self.terminal.draw(|frame| {
+        let draw_fn = |frame: &mut Frame| {
             let main_layout = MainLayout::new(frame);
             frame.render_widget(
                 Paragraph::new("Looking at a buffer in Willy!"),
@@ -50,7 +54,12 @@ impl Tui {
             for (buffer, layout) in buffers.zip(buffers_layout.iter()) {
                 frame.render_widget(Paragraph::new(buffer.to_text() + "_"), *layout);
             }
-        })?;
+        };
+        match &mut self.terminal {
+            TerminalImpl::Default(t) => {
+                t.draw(draw_fn)?;
+            }
+        }
         Ok(())
     }
 }
@@ -81,14 +90,41 @@ impl MainLayout {
     }
 }
 
-impl Drop for Tui {
+enum TerminalImpl {
+    Default(Terminal<CrosstermBackend<Stdout>>),
+}
+
+impl TerminalImpl {
+    fn new(b: BackendType) -> Result<TerminalImpl> {
+        match b {
+            BackendType::Default => {
+                let backend = CrosstermBackend::new(std::io::stdout());
+                let mut terminal = Terminal::new(backend)?;
+                crossterm::terminal::enable_raw_mode()?;
+                crossterm::execute!(
+                    std::io::stdout(),
+                    crossterm::terminal::EnterAlternateScreen,
+                    crossterm::event::EnableMouseCapture
+                )?;
+                terminal.hide_cursor()?;
+                Ok(TerminalImpl::Default(terminal))
+            }
+        }
+    }
+}
+
+impl Drop for TerminalImpl {
     fn drop(&mut self) {
-        let _ = crossterm::execute!(
-            std::io::stdout(),
-            crossterm::event::DisableMouseCapture,
-            crossterm::terminal::LeaveAlternateScreen
-        );
-        let _ = crossterm::terminal::disable_raw_mode();
+        match self {
+            TerminalImpl::Default(_) => {
+                let _ = crossterm::execute!(
+                    std::io::stdout(),
+                    crossterm::event::DisableMouseCapture,
+                    crossterm::terminal::LeaveAlternateScreen
+                );
+                let _ = crossterm::terminal::disable_raw_mode();
+            }
+        };
     }
 }
 
@@ -138,18 +174,24 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
 mod scm {
     use std::ffi::CStr;
 
-    use flashkick::{err::ResultToScm, foreign_object::ForeignObjectType, module::Module, Scm};
+    use anyhow::anyhow;
+    use flashkick::{
+        err::{throw_error, ResultToScm},
+        foreign_object::ForeignObjectType,
+        module::Module,
+        Scm,
+    };
 
     use crate::buffer::Buffer;
 
-    use super::{event_to_scm, next_event, Tui};
+    use super::{event_to_scm, next_event, BackendType, Tui};
 
     /// Initialize the `(willy tui)` module.
     ///
     /// # Safety
     /// Calls unsafe code.
     #[no_mangle]
-    pub unsafe extern "C" fn scm_init_willy_tui_module() {
+    pub unsafe extern "C" fn scm_init_willy_internal_tui_module() {
         TuiModule.init();
     }
 
@@ -157,30 +199,56 @@ mod scm {
 
     impl Module for TuiModule {
         fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy tui\0").unwrap()
+            CStr::from_bytes_with_nul(b"willy internal tui\0").unwrap()
         }
 
         unsafe fn define(&self, ctx: &mut flashkick::module::ModuleInitContext) {
             ctx.define_type::<Tui>();
             ctx.define_subr_0(
-                CStr::from_bytes_with_nul(b"new-tui\0").unwrap(),
-                scm_new_tui,
+                CStr::from_bytes_with_nul(b"--next-event\0").unwrap(),
+                scm_next_event,
             );
             ctx.define_subr_1(
-                CStr::from_bytes_with_nul(b"delete-tui\0").unwrap(),
+                CStr::from_bytes_with_nul(b"--new-tui\0").unwrap(),
+                scm_new_tui,
+                1,
+            );
+            ctx.define_subr_1(
+                CStr::from_bytes_with_nul(b"--delete-tui\0").unwrap(),
                 scm_delete_tui,
                 1,
             );
-            ctx.define_subr_0(
-                CStr::from_bytes_with_nul(b"next-event\0").unwrap(),
-                scm_next_event,
+            ctx.define_subr_1(
+                CStr::from_bytes_with_nul(b"--tui-size\0").unwrap(),
+                scm_tui_size,
+                1,
             );
-            ctx.define_subr_2(CStr::from_bytes_with_nul(b"draw\0").unwrap(), scm_draw, 2);
+            ctx.define_subr_2(
+                CStr::from_bytes_with_nul(b"--tui-draw\0").unwrap(),
+                scm_tui_draw,
+                2,
+            );
         }
     }
 
-    extern "C" fn scm_new_tui() -> Scm {
-        let tui = Box::new(Tui::new().scm_unwrap());
+    pub extern "C" fn scm_next_event() -> Scm {
+        let e = match next_event() {
+            Some(e) => e,
+            None => return Scm::FALSE,
+        };
+        unsafe { event_to_scm(e) }.unwrap_or(Scm::FALSE)
+    }
+
+    extern "C" fn scm_new_tui(backend_type: Scm) -> Scm {
+        let backend_type = match unsafe { backend_type.to_symbol().as_str() } {
+            "default" => BackendType::Default,
+            t => unsafe {
+                throw_error(anyhow!(
+                    "unknown backend type {t}, valid values are 'default and 'dummy"
+                ))
+            },
+        };
+        let tui = Box::new(Tui::new(backend_type).scm_unwrap());
         unsafe { Tui::to_scm(tui) }
     }
 
@@ -189,7 +257,18 @@ mod scm {
         Scm::EOL
     }
 
-    extern "C" fn scm_draw(tui: Scm, buffers: Scm) -> Scm {
+    extern "C" fn scm_tui_size(tui: Scm) -> Scm {
+        let tui = unsafe { Tui::from_scm(&tui) };
+        let (width, height) = tui.size().scm_unwrap();
+        unsafe {
+            Scm::with_alist([
+                (Scm::new_symbol("width"), Scm::new_u16(width)),
+                (Scm::new_symbol("height"), Scm::new_u16(height)),
+            ])
+        }
+    }
+
+    extern "C" fn scm_tui_draw(tui: Scm, buffers: Scm) -> Scm {
         let mut tui = tui;
         let tui = unsafe { Tui::from_scm_mut(&mut tui) };
         tui.draw(unsafe {
@@ -200,13 +279,5 @@ mod scm {
         })
         .scm_unwrap();
         Scm::EOL
-    }
-
-    pub extern "C" fn scm_next_event() -> Scm {
-        let e = match next_event() {
-            Some(e) => e,
-            None => return Scm::FALSE,
-        };
-        unsafe { event_to_scm(e) }.unwrap_or(Scm::FALSE)
     }
 }

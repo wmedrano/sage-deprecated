@@ -17,6 +17,7 @@ impl Buffer {
     }
 
     /// Create a new buffer from text.
+    #[cfg(test)]
     pub fn with_text(text: &str) -> Buffer {
         Buffer {
             lines: text.split('\n').map(str::to_string).collect(),
@@ -129,7 +130,7 @@ mod scm {
     use super::Buffer;
 
     #[no_mangle]
-    pub unsafe extern "C" fn scm_init_willy_buffer_module() {
+    pub unsafe extern "C" fn scm_init_willy_internal_buffer_module() {
         BufferModule.init();
     }
 
@@ -137,41 +138,35 @@ mod scm {
 
     impl Module for BufferModule {
         fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy buffer\0").unwrap()
+            CStr::from_bytes_with_nul(b"willy internal buffer\0").unwrap()
         }
 
         unsafe fn define(&self, ctx: &mut ModuleInitContext) {
             ctx.define_type::<Buffer>();
-            ctx.define_subr_1(
-                CStr::from_bytes_with_nul(b"new-buffer\0").unwrap(),
+            ctx.define_subr_0(
+                CStr::from_bytes_with_nul(b"--new-buffer\0").unwrap(),
                 scm_new_buffer,
-                0,
             );
             ctx.define_subr_1(
-                CStr::from_bytes_with_nul(b"buffer-to-text\0").unwrap(),
+                CStr::from_bytes_with_nul(b"--buffer-to-text\0").unwrap(),
                 scm_buffer_to_text,
                 1,
             );
             ctx.define_subr_2(
-                CStr::from_bytes_with_nul(b"buffer-insert-string\0").unwrap(),
+                CStr::from_bytes_with_nul(b"--buffer-insert-string\0").unwrap(),
                 scm_buffer_insert_string,
                 2,
             );
             ctx.define_subr_1(
-                CStr::from_bytes_with_nul(b"buffer-pop-char\0").unwrap(),
+                CStr::from_bytes_with_nul(b"--buffer-pop-char\0").unwrap(),
                 scm_buffer_pop_char,
                 1,
             );
         }
     }
 
-    extern "C" fn scm_new_buffer(text: Scm) -> Scm {
-        let buffer = if text.is_undefined() {
-            Box::new(Buffer::new())
-        } else {
-            let text = unsafe { text.to_string() };
-            Box::new(Buffer::with_text(&text))
-        };
+    extern "C" fn scm_new_buffer() -> Scm {
+        let buffer = Box::new(Buffer::new());
         unsafe { Buffer::to_scm(buffer) }
     }
 
