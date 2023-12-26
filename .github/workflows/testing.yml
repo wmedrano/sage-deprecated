@@ -18,8 +18,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install guile-3.0-dev
-      - name: Install Cargo LLVM Cov
-        uses: taiki-e/install-action@cargo-llvm-cov
       - name: Install Cargo Nextest
         uses: taiki-e/install-action@nextest
       - name: Rust Cache
@@ -27,6 +25,6 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: Test Rust
-        run: cargo llvm-cov nextest
+        run: cargo nextest run
       - name: Test Scheme
         run: guile -L scheme -x target/debug scheme/tests/willy-buffer.scm
