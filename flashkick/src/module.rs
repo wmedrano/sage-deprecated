@@ -74,8 +74,41 @@ impl ModuleInitContext {
     ///
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn define_subr_2(&mut self, name: &CStr, subr: extern "C" fn(Scm, Scm) -> Scm) {
-        ffi::scm_c_define_gsubr(name.as_ptr(), 2, 0, 0, subr as _);
+    pub unsafe fn define_subr_2(
+        &mut self,
+        name: &CStr,
+        subr: extern "C" fn(Scm, Scm) -> Scm,
+        required_params: usize,
+    ) {
+        let optional_params = 2 - required_params;
+        ffi::scm_c_define_gsubr(
+            name.as_ptr(),
+            required_params as _,
+            optional_params as _,
+            0,
+            subr as _,
+        );
+        ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut::<c_void>());
+    }
+
+    /// Define a subroutine in the module.
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn define_subr_3(
+        &mut self,
+        name: &CStr,
+        subr: extern "C" fn(Scm, Scm, Scm) -> Scm,
+        required_params: usize,
+    ) {
+        let optional_params = 3 - required_params;
+        ffi::scm_c_define_gsubr(
+            name.as_ptr(),
+            required_params as _,
+            optional_params as _,
+            0,
+            subr as _,
+        );
         ffi::scm_c_export(name.as_ptr(), std::ptr::null_mut::<c_void>());
     }
 }

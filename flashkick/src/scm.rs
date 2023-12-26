@@ -1,6 +1,6 @@
 use crate::ffi;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct Scm(pub ffi::SCM);
 
@@ -152,8 +152,8 @@ impl Scm {
 
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn with_alist<I: Iterator<Item = (Scm, Scm)>>(iter: I) -> Scm {
-        Self::with_list_impl(iter.map(|(x, y)| Self::new_pair(x, y)))
+    pub unsafe fn with_alist<I: IntoIterator<Item = (Scm, Scm)>>(iter: I) -> Scm {
+        Self::with_list_impl(iter.into_iter().map(|(x, y)| Self::new_pair(x, y)))
     }
 
     /// # Safety
