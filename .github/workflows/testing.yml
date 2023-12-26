@@ -28,7 +28,7 @@ jobs:
         run: cargo nextest run
       - name: Test Scheme
         run: |
-          find scheme/tests -type f -name "*.scm" -exec guile {} \; >/test-results.txt
+          find scheme/tests -type f -name "*.scm" -exec guile {} \; >test-results.txt
           cat test-results.txt
         env:
           GUILE_LOAD_PATH: scheme
