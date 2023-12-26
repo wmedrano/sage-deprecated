@@ -28,3 +28,5 @@ jobs:
         run: cargo nextest run
       - name: Test Scheme
         run: guile -L scheme -x target/debug scheme/tests/willy-buffer.scm
+      - name: Detailed Scheme Test Results
+        run: cat *.log

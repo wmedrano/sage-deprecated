@@ -1,6 +1,6 @@
 (define-module (willy buffer))
 
-(load-extension "target/release/libwilly.so" "scm_init_willy_buffer_module")
+(load-extension "target/debug/libwilly.so" "scm_init_willy_buffer_module")
 
 (define-public (new-scratch-buffer)
   "Create a new scratch buffer."
