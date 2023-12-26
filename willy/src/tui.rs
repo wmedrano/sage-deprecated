@@ -3,17 +3,14 @@ use std::time::Duration;
 use anyhow::{bail, Result};
 use crossterm::event;
 use flashkick::{foreign_object::ForeignObjectType, Scm};
-use ratatui::{
-    prelude::{Constraint, Direction, Layout, Rect},
-    widgets::Paragraph,
-    Frame, Terminal,
-};
+use ratatui::{prelude::Rect, Frame, Terminal};
 
 use crate::buffer::Buffer;
 
-use self::terminal_backends::TerminalBackend;
+use self::{terminal_backends::TerminalBackend, widgets::BufferWidget};
 
 mod terminal_backends;
+mod widgets;
 
 pub struct Tui {
     terminal: Terminal<TerminalBackend>,
@@ -56,52 +53,23 @@ impl Tui {
         }
     }
 
-    pub fn draw<'a>(&mut self, buffers: impl Clone + Iterator<Item = &'a Buffer>) -> Result<()> {
+    pub fn draw<'a>(&mut self, widgets: impl Iterator<Item = Widget<'a>>) -> Result<()> {
         self.terminal.draw(|frame: &mut Frame| {
-            let main_layout = MainLayout::new(frame);
-            frame.render_widget(
-                Paragraph::new("Looking at a buffer in Willy!"),
-                main_layout.status,
-            );
-
-            let buffers_count = buffers.clone().count() as u32;
-            let buffers_layout = Layout::new(
-                Direction::Vertical,
-                buffers.clone().map(|_| Constraint::Ratio(1, buffers_count)),
-            )
-            .split(main_layout.buffers);
-            for (buffer, layout) in buffers.zip(buffers_layout.iter()) {
-                frame.render_widget(Paragraph::new(buffer.to_text() + "_"), *layout);
+            let window_area = frame.size();
+            let should_render_widget = |w: &Widget| {
+                w.area.width > 0 && w.area.height > 0 && window_area.intersection(w.area) == w.area
+            };
+            for widget in widgets.filter(should_render_widget) {
+                frame.render_widget(BufferWidget::new(widget.buffer), widget.area);
             }
         })?;
         Ok(())
     }
 }
 
-pub struct MainLayout {
-    buffers: Rect,
-    status: Rect,
-}
-
-impl MainLayout {
-    fn new(f: &Frame) -> MainLayout {
-        let layouts = Layout::new(
-            Direction::Vertical,
-            [
-                Constraint::Length(f.size().height - 1),
-                Constraint::Length(1),
-            ],
-        )
-        .split(f.size());
-        let layouts: &[Rect] = &layouts;
-        match &layouts {
-            [main, status] => MainLayout {
-                buffers: *main,
-                status: *status,
-            },
-            _ => unreachable!(),
-        }
-    }
+pub struct Widget<'a> {
+    pub area: Rect,
+    pub buffer: &'a Buffer,
 }
 
 fn next_event() -> Option<event::Event> {
@@ -123,7 +91,7 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
             ..
         }) => {
             let mut tmp_ch_buffer = [0u8; 4];
-            let ch = match code {
+            let key = match code {
                 event::KeyCode::Enter => '\n'.encode_utf8(&mut tmp_ch_buffer),
                 event::KeyCode::Tab => '\t'.encode_utf8(&mut tmp_ch_buffer),
                 event::KeyCode::Backspace => "<backspace>",
@@ -137,9 +105,9 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
             };
             let is_ctrl = modifiers.contains(event::KeyModifiers::CONTROL);
             let alist = Scm::with_alist([
-                (Scm::new_keyword("event-type"), event_type),
-                (Scm::new_keyword("char"), Scm::new_string(ch)),
-                (Scm::new_keyword("ctrl?"), Scm::new_bool(is_ctrl)),
+                (Scm::new_symbol("event-type"), event_type),
+                (Scm::new_symbol("key"), Scm::new_string(key)),
+                (Scm::new_symbol("ctrl?"), Scm::new_bool(is_ctrl)),
             ]);
             Some(alist)
         }
@@ -147,7 +115,7 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
     }
 }
 
-mod scm {
+pub mod scm {
     use std::ffi::CStr;
 
     use anyhow::anyhow;
@@ -157,10 +125,11 @@ mod scm {
         module::Module,
         Scm,
     };
+    use ratatui::prelude::Rect;
 
     use crate::buffer::Buffer;
 
-    use super::{event_to_scm, next_event, BackendType, Tui};
+    use super::{event_to_scm, next_event, BackendType, Tui, Widget};
 
     /// Initialize the `(willy tui)` module.
     ///
@@ -250,16 +219,37 @@ mod scm {
         }
     }
 
-    extern "C" fn scm_tui_draw(tui: Scm, buffers: Scm) -> Scm {
+    unsafe fn scm_widget_to_widget(widget: Scm) -> Widget<'static> {
+        let mut buffer_ptr: *const Buffer = std::ptr::null();
+        let mut area = Rect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        };
+        for (key, value) in widget.iter_pairs() {
+            let key = key.to_symbol();
+            match key.as_str() {
+                "buffer" => buffer_ptr = Buffer::ptr_from_scm(value),
+                "x" => area.x = value.to_f64() as _,
+                "y" => area.y = value.to_f64() as _,
+                "width" => area.width = value.to_f64() as _,
+                "height" => area.height = value.to_f64() as _,
+                _ => (),
+            }
+        }
+        let buffer = buffer_ptr
+            .as_ref()
+            .ok_or_else(|| anyhow!("'buffer not specified for widget"))
+            .scm_unwrap();
+        Widget { area, buffer }
+    }
+
+    extern "C" fn scm_tui_draw(tui: Scm, widgets: Scm) -> Scm {
         let mut tui = tui;
         let tui = unsafe { Tui::from_scm_mut(&mut tui) };
-        tui.draw(unsafe {
-            buffers
-                .iter()
-                .map(|scm_buffer| Buffer::ptr_from_scm(scm_buffer))
-                .map(|ptr| &*ptr)
-        })
-        .scm_unwrap();
+        let widgets = unsafe { widgets.iter().map(|scm| scm_widget_to_widget(scm)) };
+        tui.draw(widgets).scm_unwrap();
         Scm::EOL
     }
 

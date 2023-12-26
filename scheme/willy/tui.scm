@@ -1,7 +1,7 @@
 (define-module (willy tui))
 (use-modules (willy internal tui))
 
-(define-public backspace-char "<backspace>")
+(define-public backspace-key "<backspace>")
 
 (export new-tui)
 (define* (new-tui #:optional backend-type)

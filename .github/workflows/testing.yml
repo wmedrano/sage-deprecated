@@ -24,11 +24,12 @@ jobs:
         uses: Swatinem/rust-cache@v1
       - name: Build
         run: cargo build --verbose
-      - name: Test Rust
+      - name: Rust Test
         run: cargo nextest run
-      - name: Test Scheme
+      - name: Rust Doctest
+      - name: Scheme Test
         run: |
-          find scheme/tests -type f -name "*.scm" -exec guile {} \; >test-results.txt
+          find scheme/tests -type f -name "*.scm" -exec cargo run -- {} \; >test-results.txt
           cat test-results.txt
         env:
           GUILE_LOAD_PATH: scheme

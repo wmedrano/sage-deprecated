@@ -269,10 +269,18 @@ impl Scm {
     ///
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn iter(self) -> impl Clone + Iterator<Item = Scm> {
+    pub unsafe fn iter(self) -> impl Clone + ExactSizeIterator + Iterator<Item = Scm> {
         let len = self.length();
         // TODO: Use a better algorithm. This may be O(n) for each access makind iteration O(n^2).
         (0..len).map(move |idx| self.list_ref(idx))
+    }
+
+    /// Iterate through pair elements.
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn iter_pairs(self) -> impl Clone + ExactSizeIterator + Iterator<Item = (Scm, Scm)> {
+        self.iter().map(|pair| (pair.car(), pair.cdr()))
     }
 
     /// Return the `k`th element of the list. Equivalent to calling `(list-ref self k)` in Scheme.
@@ -293,14 +301,14 @@ impl From<ffi::SCM> for Scm {
 
 #[cfg(test)]
 mod tests {
-    use crate::with_guile;
+    use crate::boot_guile;
 
     use super::*;
 
     #[test]
     fn car_returns_first_cell() {
         unsafe {
-            with_guile(|| {
+            boot_guile(std::iter::empty(), || {
                 let a = Scm::new_i32(1);
                 let b = Scm::new_i32(2);
                 let c = Scm::new_cons(a, b);
@@ -312,7 +320,7 @@ mod tests {
     #[test]
     fn cdr_returns_second_cell() {
         unsafe {
-            with_guile(|| {
+            boot_guile(std::iter::empty(), || {
                 let a = Scm::new_i32(1);
                 let b = Scm::new_i32(2);
                 let c = Scm::new_cons(a, b);
@@ -324,7 +332,7 @@ mod tests {
     #[test]
     fn type_conversions_are_equal_before_and_after() {
         unsafe {
-            with_guile(|| {
+            boot_guile(std::iter::empty(), || {
                 assert!(Scm::new_bool(true).to_bool());
                 assert!(!Scm::new_bool(false).to_bool());
                 assert_eq!(Scm::new_u8(1).to_u8(), 1);
@@ -363,7 +371,7 @@ mod tests {
     #[test]
     fn scheme_falsey_values() {
         unsafe {
-            with_guile(|| {
+            boot_guile(std::iter::empty(), || {
                 assert!(!Scm::new_bool(false).to_bool());
                 assert!(!Scm::FALSE.to_bool());
                 assert!(!Scm::ELISP_NIL.to_bool());
@@ -374,7 +382,7 @@ mod tests {
     #[test]
     fn scheme_truthy_values() {
         unsafe {
-            with_guile(|| {
+            boot_guile(std::iter::empty(), || {
                 assert!(Scm::TRUE.to_bool());
                 assert!(Scm::EOL.to_bool());
                 assert!(Scm::UNDEFINED.to_bool());
@@ -395,7 +403,7 @@ mod tests {
     #[test]
     fn with_list_on_empty_iter_returns_eol() {
         unsafe {
-            with_guile(|| {
+            boot_guile(std::iter::empty(), || {
                 assert!(Scm::with_list(std::iter::empty()).is_eol());
             })
         }
