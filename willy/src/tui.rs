@@ -4,9 +4,9 @@ use anyhow::Result;
 use crossterm::event;
 use flashkick::{foreign_object::ForeignObjectType, Scm};
 use ratatui::{
-    prelude::{Constraint, CrosstermBackend, Direction, Layout},
+    prelude::{Constraint, CrosstermBackend, Direction, Layout, Rect},
     widgets::Paragraph,
-    Terminal,
+    Frame, Terminal,
 };
 
 use crate::buffer::Buffer;
@@ -33,23 +33,51 @@ impl Tui {
         Ok(Tui { terminal })
     }
 
-    pub fn draw(&mut self, buffer: &Buffer, log: &Buffer) -> Result<()> {
+    pub fn draw<'a>(&mut self, buffers: impl Clone + Iterator<Item = &'a Buffer>) -> Result<()> {
         self.terminal.draw(|frame| {
-            let layout = Layout::new(
+            let main_layout = MainLayout::new(frame);
+            frame.render_widget(
+                Paragraph::new("Looking at a buffer in Willy!"),
+                main_layout.status,
+            );
+
+            let buffers_count = buffers.clone().count() as u32;
+            let buffers_layout = Layout::new(
                 Direction::Vertical,
-                [
-                    Constraint::Percentage(49), // 0 - Buffer window.
-                    Constraint::Percentage(49), // 1 - Log window.
-                    Constraint::Length(1),      // 2 - Bottom status bar.
-                ],
+                buffers.clone().map(|_| Constraint::Ratio(1, buffers_count)),
             )
-            .split(frame.size());
-            let log_text: Vec<_> = log.iter_lines().rev().collect();
-            frame.render_widget(Paragraph::new(buffer.to_text() + "_"), layout[0]);
-            frame.render_widget(Paragraph::new(log_text.join("\n")), layout[1]);
-            frame.render_widget(Paragraph::new("Looking at a buffer in Willy!"), layout[2]);
+            .split(main_layout.buffers);
+            for (buffer, layout) in buffers.zip(buffers_layout.iter()) {
+                frame.render_widget(Paragraph::new(buffer.to_text() + "_"), *layout);
+            }
         })?;
         Ok(())
+    }
+}
+
+pub struct MainLayout {
+    buffers: Rect,
+    status: Rect,
+}
+
+impl MainLayout {
+    fn new(f: &Frame) -> MainLayout {
+        let layouts = Layout::new(
+            Direction::Vertical,
+            [
+                Constraint::Length(f.size().height - 1),
+                Constraint::Length(1),
+            ],
+        )
+        .split(f.size());
+        let layouts: &[Rect] = &layouts;
+        match &layouts {
+            [main, status] => MainLayout {
+                buffers: *main,
+                status: *status,
+            },
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -147,7 +175,7 @@ mod scm {
                 CStr::from_bytes_with_nul(b"next-event\0").unwrap(),
                 scm_next_event,
             );
-            ctx.define_subr_3(CStr::from_bytes_with_nul(b"draw\0").unwrap(), scm_draw, 3);
+            ctx.define_subr_2(CStr::from_bytes_with_nul(b"draw\0").unwrap(), scm_draw, 2);
         }
     }
 
@@ -161,12 +189,16 @@ mod scm {
         Scm::EOL
     }
 
-    extern "C" fn scm_draw(tui: Scm, buffer: Scm, log: Scm) -> Scm {
+    extern "C" fn scm_draw(tui: Scm, buffers: Scm) -> Scm {
         let mut tui = tui;
         let tui = unsafe { Tui::from_scm_mut(&mut tui) };
-        let buffer = unsafe { Buffer::from_scm(&buffer) };
-        let log = unsafe { Buffer::from_scm(&log) };
-        tui.draw(buffer, log).scm_unwrap();
+        tui.draw(unsafe {
+            buffers
+                .iter()
+                .map(|scm_buffer| Buffer::ptr_from_scm(scm_buffer))
+                .map(|ptr| &*ptr)
+        })
+        .scm_unwrap();
         Scm::EOL
     }
 

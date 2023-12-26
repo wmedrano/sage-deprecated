@@ -265,7 +265,7 @@ impl Scm {
     ///
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn iter(self) -> impl Iterator<Item = Scm> {
+    pub unsafe fn iter(self) -> impl Clone + Iterator<Item = Scm> {
         let len = self.length();
         // TODO: Use a better algorithm. This may be O(n) for each access makind iteration O(n^2).
         (0..len).map(move |idx| self.list_ref(idx))

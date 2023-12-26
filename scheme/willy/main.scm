@@ -19,26 +19,31 @@
   (set! should-run #t)
   (set! main-tui (new-tui))
   (while should-run
-    (draw main-tui main-buffer log-buffer)
+    (draw main-tui (list main-buffer log-buffer))
     (handle-all-events!)
     (usleep 10000))
   (delete-tui main-tui)
   (set! main-tui #f))
 
+;; The buffer that is currently being edited.
 (define main-buffer (new-scratch-buffer))
+;; A buffer containing log messages for Willy itself.
 (define log-buffer (new-buffer))
+;; If Willy should continue to run.
 (define should-run #f)
+;; The main terminal-ui object. This handles drawing to the terminal.
 (define main-tui #f)
 
 (define (handle-all-events!)
+  "Handle all events in the event queue."
   (let handle-single-event ((event (next-event)))
     (if event
 	(begin
 	  (handle-event! event)
-	  (handle-single-event (next-event)))
-	'())))
+	  (handle-single-event (next-event))))))
 
 (define (handle-event! event)
+  "Handle a single event."
   (let ((char   (assoc-ref event #:char))
 	(ctrl?  (assoc-ref event #:ctrl?))
 	(press? (equal? (assoc-ref event #:event-type) 'press)))
@@ -52,6 +57,7 @@
       (buffer-insert-string main-buffer char)))))
 
 (define (log-event event)
+  "Log an event."
   (log-message!
    (string-concatenate
     `("Event: " ,(object->string event)))))
