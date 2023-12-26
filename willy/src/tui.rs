@@ -1,18 +1,22 @@
-use std::{io::Stdout, time::Duration};
+use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use crossterm::event;
 use flashkick::{foreign_object::ForeignObjectType, Scm};
 use ratatui::{
-    prelude::{Constraint, CrosstermBackend, Direction, Layout, Rect},
+    prelude::{Constraint, Direction, Layout, Rect},
     widgets::Paragraph,
     Frame, Terminal,
 };
 
 use crate::buffer::Buffer;
 
+use self::terminal_backends::TerminalBackend;
+
+mod terminal_backends;
+
 pub struct Tui {
-    terminal: TerminalImpl,
+    terminal: Terminal<TerminalBackend>,
 }
 
 impl ForeignObjectType for Tui {
@@ -22,23 +26,38 @@ impl ForeignObjectType for Tui {
 #[derive(Copy, Clone)]
 pub enum BackendType {
     Default,
+    Test,
 }
 
 impl Tui {
     pub fn new(backend_type: BackendType) -> Result<Tui> {
-        let terminal = TerminalImpl::new(backend_type)?;
+        let backend = TerminalBackend::new(backend_type)?;
+        let mut terminal = Terminal::new(backend)?;
+        terminal.hide_cursor()?;
         Ok(Tui { terminal })
     }
 
     pub fn size(&self) -> Result<(u16, u16)> {
-        let sz = match &self.terminal {
-            TerminalImpl::Default(t) => t.size()?,
-        };
+        let sz = self.terminal.size()?;
         Ok((sz.width, sz.height))
     }
 
+    pub fn state(&self) -> Result<String> {
+        match self.terminal.backend() {
+            TerminalBackend::Default(_) => {
+                bail!("it is invalid to get state for the default tui backend")
+            }
+            TerminalBackend::Test(b) => {
+                let width = self.size()?.0 as usize;
+                let cells: Vec<&str> = b.buffer().content().iter().map(|c| c.symbol()).collect();
+                let lines: Vec<String> = cells.chunks_exact(width).map(|l| l.join("")).collect();
+                Ok(lines.join("\n"))
+            }
+        }
+    }
+
     pub fn draw<'a>(&mut self, buffers: impl Clone + Iterator<Item = &'a Buffer>) -> Result<()> {
-        let draw_fn = |frame: &mut Frame| {
+        self.terminal.draw(|frame: &mut Frame| {
             let main_layout = MainLayout::new(frame);
             frame.render_widget(
                 Paragraph::new("Looking at a buffer in Willy!"),
@@ -54,12 +73,7 @@ impl Tui {
             for (buffer, layout) in buffers.zip(buffers_layout.iter()) {
                 frame.render_widget(Paragraph::new(buffer.to_text() + "_"), *layout);
             }
-        };
-        match &mut self.terminal {
-            TerminalImpl::Default(t) => {
-                t.draw(draw_fn)?;
-            }
-        }
+        })?;
         Ok(())
     }
 }
@@ -87,44 +101,6 @@ impl MainLayout {
             },
             _ => unreachable!(),
         }
-    }
-}
-
-enum TerminalImpl {
-    Default(Terminal<CrosstermBackend<Stdout>>),
-}
-
-impl TerminalImpl {
-    fn new(b: BackendType) -> Result<TerminalImpl> {
-        match b {
-            BackendType::Default => {
-                let backend = CrosstermBackend::new(std::io::stdout());
-                let mut terminal = Terminal::new(backend)?;
-                crossterm::terminal::enable_raw_mode()?;
-                crossterm::execute!(
-                    std::io::stdout(),
-                    crossterm::terminal::EnterAlternateScreen,
-                    crossterm::event::EnableMouseCapture
-                )?;
-                terminal.hide_cursor()?;
-                Ok(TerminalImpl::Default(terminal))
-            }
-        }
-    }
-}
-
-impl Drop for TerminalImpl {
-    fn drop(&mut self) {
-        match self {
-            TerminalImpl::Default(_) => {
-                let _ = crossterm::execute!(
-                    std::io::stdout(),
-                    crossterm::event::DisableMouseCapture,
-                    crossterm::terminal::LeaveAlternateScreen
-                );
-                let _ = crossterm::terminal::disable_raw_mode();
-            }
-        };
     }
 }
 
@@ -228,6 +204,11 @@ mod scm {
                 scm_tui_draw,
                 2,
             );
+            ctx.define_subr_1(
+                CStr::from_bytes_with_nul(b"--tui-state-for-test\0").unwrap(),
+                scm_tui_state_for_test,
+                1,
+            );
         }
     }
 
@@ -242,6 +223,7 @@ mod scm {
     extern "C" fn scm_new_tui(backend_type: Scm) -> Scm {
         let backend_type = match unsafe { backend_type.to_symbol().as_str() } {
             "default" => BackendType::Default,
+            "test" => BackendType::Test,
             t => unsafe {
                 throw_error(anyhow!(
                     "unknown backend type {t}, valid values are 'default and 'dummy"
@@ -279,5 +261,12 @@ mod scm {
         })
         .scm_unwrap();
         Scm::EOL
+    }
+
+    extern "C" fn scm_tui_state_for_test(tui: Scm) -> Scm {
+        let mut tui = tui;
+        let tui = unsafe { Tui::from_scm_mut(&mut tui) };
+        let state = tui.state().scm_unwrap();
+        unsafe { Scm::new_string(&state) }
     }
 }

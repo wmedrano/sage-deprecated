@@ -5,7 +5,8 @@
 
 (export new-tui)
 (define* (new-tui #:optional backend-type)
-  "Create a new terminal UI."
+  "Create a new terminal UI.
+backend-type must be either 'default or 'test."
   (--new-tui (or backend-type 'default)))
 
 (define-public (delete-tui tui)
@@ -25,3 +26,9 @@
 
 Example return value: '((width . 80) (height . 24))"
   (--tui-size tui))
+
+(define-public (tui-state-for-test tui)
+  "Get the state (as a string) for the test tui.
+
+The tui must have been constructed with (new-tui 'test)"
+  (--tui-state-for-test tui))

@@ -129,7 +129,7 @@ impl Scm {
     /// Makes calls to C.
     pub unsafe fn with_list<I, IT>(iter: I) -> Scm
     where
-        I: IntoIterator<Item = Scm, IntoIter = IT>,
+        I: IntoIterator<IntoIter = IT>,
         IT: DoubleEndedIterator + Iterator<Item = Scm>,
     {
         Scm::with_list_impl(iter.into_iter().rev())
@@ -152,8 +152,12 @@ impl Scm {
 
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn with_alist<I: IntoIterator<Item = (Scm, Scm)>>(iter: I) -> Scm {
-        Self::with_list_impl(iter.into_iter().map(|(x, y)| Self::new_pair(x, y)))
+    pub unsafe fn with_alist<I, IT>(iter: I) -> Scm
+    where
+        I: IntoIterator<IntoIter = IT>,
+        IT: DoubleEndedIterator + Iterator<Item = (Scm, Scm)>,
+    {
+        Self::with_list(iter.into_iter().map(|(x, y)| Self::new_pair(x, y)))
     }
 
     /// # Safety
