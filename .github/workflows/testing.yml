@@ -27,6 +27,10 @@ jobs:
       - name: Test Rust
         run: cargo nextest run
       - name: Test Scheme
-        run: guile -L scheme -x target/debug scheme/tests/willy-buffer.scm
+        run: |
+          find scheme/tests -type f -name "*.scm" -exec guile {} \; >test-results.txt
+          cat test-results.txt
+        env:
+          GUILE_LOAD_PATH: scheme
       - name: Detailed Scheme Test Results
         run: cat *.log

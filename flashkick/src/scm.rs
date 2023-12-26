@@ -129,7 +129,7 @@ impl Scm {
     /// Makes calls to C.
     pub unsafe fn with_list<I, IT>(iter: I) -> Scm
     where
-        I: IntoIterator<Item = Scm, IntoIter = IT>,
+        I: IntoIterator<IntoIter = IT>,
         IT: DoubleEndedIterator + Iterator<Item = Scm>,
     {
         Scm::with_list_impl(iter.into_iter().rev())
@@ -152,8 +152,12 @@ impl Scm {
 
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn with_alist<I: IntoIterator<Item = (Scm, Scm)>>(iter: I) -> Scm {
-        Self::with_list_impl(iter.into_iter().map(|(x, y)| Self::new_pair(x, y)))
+    pub unsafe fn with_alist<I, IT>(iter: I) -> Scm
+    where
+        I: IntoIterator<IntoIter = IT>,
+        IT: DoubleEndedIterator + Iterator<Item = (Scm, Scm)>,
+    {
+        Self::with_list(iter.into_iter().map(|(x, y)| Self::new_pair(x, y)))
     }
 
     /// # Safety
@@ -265,7 +269,7 @@ impl Scm {
     ///
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn iter(self) -> impl Iterator<Item = Scm> {
+    pub unsafe fn iter(self) -> impl Clone + Iterator<Item = Scm> {
         let len = self.length();
         // TODO: Use a better algorithm. This may be O(n) for each access makind iteration O(n^2).
         (0..len).map(move |idx| self.list_ref(idx))
@@ -321,8 +325,8 @@ mod tests {
     fn type_conversions_are_equal_before_and_after() {
         unsafe {
             with_guile(|| {
-                assert_eq!(Scm::new_bool(true).to_bool(), true);
-                assert_eq!(Scm::new_bool(false).to_bool(), false);
+                assert!(Scm::new_bool(true).to_bool());
+                assert!(!Scm::new_bool(false).to_bool());
                 assert_eq!(Scm::new_u8(1).to_u8(), 1);
                 assert_eq!(Scm::new_i8(-2).to_i8(), -2);
                 assert_eq!(Scm::new_u16(3).to_u16(), 3);
@@ -360,9 +364,9 @@ mod tests {
     fn scheme_falsey_values() {
         unsafe {
             with_guile(|| {
-                assert_eq!(Scm::new_bool(false).to_bool(), false);
-                assert_eq!(Scm::FALSE.to_bool(), false);
-                assert_eq!(Scm::ELISP_NIL.to_bool(), false);
+                assert!(!Scm::new_bool(false).to_bool());
+                assert!(!Scm::FALSE.to_bool());
+                assert!(!Scm::ELISP_NIL.to_bool());
             });
         }
     }
@@ -371,19 +375,19 @@ mod tests {
     fn scheme_truthy_values() {
         unsafe {
             with_guile(|| {
-                assert_eq!(Scm::TRUE.to_bool(), true);
-                assert_eq!(Scm::EOL.to_bool(), true);
-                assert_eq!(Scm::UNDEFINED.to_bool(), true);
-                assert_eq!(Scm::new_u8(1).to_bool(), true);
-                assert_eq!(Scm::new_i8(-2).to_bool(), true);
-                assert_eq!(Scm::new_u16(3).to_bool(), true);
-                assert_eq!(Scm::new_i16(-4).to_bool(), true);
-                assert_eq!(Scm::new_u32(5).to_bool(), true);
-                assert_eq!(Scm::new_i32(-6).to_bool(), true);
-                assert_eq!(Scm::new_u64(7).to_bool(), true);
-                assert_eq!(Scm::new_i64(-8).to_bool(), true);
-                assert_eq!(Scm::new_f64(9.5).to_bool(), true);
-                assert_eq!(Scm::new_f64(-10.5).to_bool(), true);
+                assert!(Scm::TRUE.to_bool());
+                assert!(Scm::EOL.to_bool());
+                assert!(Scm::UNDEFINED.to_bool());
+                assert!(Scm::new_u8(1).to_bool());
+                assert!(Scm::new_i8(-2).to_bool());
+                assert!(Scm::new_u16(3).to_bool());
+                assert!(Scm::new_i16(-4).to_bool());
+                assert!(Scm::new_u32(5).to_bool());
+                assert!(Scm::new_i32(-6).to_bool());
+                assert!(Scm::new_u64(7).to_bool());
+                assert!(Scm::new_i64(-8).to_bool());
+                assert!(Scm::new_f64(9.5).to_bool());
+                assert!(Scm::new_f64(-10.5).to_bool());
             });
         }
     }

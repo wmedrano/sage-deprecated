@@ -1,6 +1,21 @@
 (define-module (willy buffer))
+(use-modules (willy internal buffer))
 
-(load-extension "target/debug/libwilly.so" "scm_init_willy_buffer_module")
+(define-public (buffer-to-text buffer)
+  (--buffer-to-text buffer))
+
+(define-public (buffer-pop-char buffer)
+  (--buffer-pop-char buffer))
+
+(define-public (buffer-insert-string buffer string)
+  (--buffer-insert-string buffer string))
+
+(export new-buffer)
+(define* (new-buffer #:optional text)
+  "Create a new buffer."
+  (let ((b (--new-buffer)))
+    (if text (buffer-insert-string b text))
+    b))
 
 (define-public (new-scratch-buffer)
   "Create a new scratch buffer."
