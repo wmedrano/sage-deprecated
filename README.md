@@ -18,6 +18,8 @@ See `.github/workflows/testing.yml` for building and testing recipes.
 
 To run the program, run: `cargo run --release -- -l scheme/ main.scm`. This:
 
+- Compiles Willy. `--release` compiles with optimizations though this
+  is not strictly required.
 - Starts the Willy Guile program. This is basically Guile with Willy
   functions linkend in.
 - Adds the `scheme` directory to the load path. This provides access
