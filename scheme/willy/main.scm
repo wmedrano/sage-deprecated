@@ -1,10 +1,10 @@
-(define-module (willy main))
-(use-modules (willy buffer)
-	     (willy tui)
-	     (willy event-loop)
-	     (srfi srfi-1))
+(define-module (willy main)
+  #:export (run-willy!)
+  #:use-module (willy buffer)
+  #:use-module (willy tui)
+  #:use-module (willy event-loop)
+  #:use-module (srfi srfi-1))
 
-(export run-willy!)
 (define* (run-willy!)
   "Run the Willy text editor."
   (set! main-tui (make-tui))

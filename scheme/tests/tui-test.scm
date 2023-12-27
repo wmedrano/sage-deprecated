@@ -2,7 +2,7 @@
 	     (willy tui)
 	     (willy buffer))
 
-(define %test-suite-name "willy-tui")
+(define %test-suite-name "tui")
 (test-begin %test-suite-name)
 
 (test-error "make-tui with bad backend is err"

@@ -1,9 +1,15 @@
-(define-module (willy event-loop))
-(use-modules (willy tui)
-	     (willy internal))
+(define-module (willy event-loop)
+  #:export (run-event-loop next-event-from-terminal list-to-event-pump)
+  #:use-module (srfi srfi-1)
+  #:use-module (willy tui)
+  #:use-module (willy internal))
 
-(export run-event-loop)
-(define* (run-event-loop #:key tui should-run-p make-layout event-pump event-handler)
+(define* (run-event-loop #:key
+			 (tui           (make-tui 'test))
+			 (should-run-p  (lambda () #f))
+			 (make-layout    empty-layout)
+			 (event-pump     (lambda () #f))
+			 (event-handler  (lambda (e) #f)))
   "Run the Willy text editor.
 tui - The terminal UI to use.
 should-run-p - Condition to determine if the application should continue running.
@@ -17,10 +23,23 @@ event-handler - A function that handles a single event returned by event-pump."
 		(make-layout #:width (assoc-ref size 'width)
 			     #:height (assoc-ref size 'height))))))
 
-(export next-event-from-terminal)
 (define* (next-event-from-terminal)
   "Get the next terminal event."
   (--next-event-from-terminal))
+
+(define* (list-to-event-pump events)
+  "Convert a list of events into an event pump."
+  (let ((next events)
+	(curr #t))
+    (lambda ()
+      (if curr
+	  (begin
+	    (if (pair? next)
+		(begin
+		  (set! curr (car next))
+		  (set! next (cdr next)))
+		(set! curr #f))))
+      curr)))
 
 
 (define* (handle-all-events event-pump event-handler)
@@ -30,3 +49,6 @@ event-handler - A function that handles a single event returned by event-pump."
 	(begin
 	  (event-handler event)
 	  (handle-single-event (event-pump))))))
+
+(define* (empty-layout #:key width height)
+  '())

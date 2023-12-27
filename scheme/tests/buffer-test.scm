@@ -1,7 +1,7 @@
 (use-modules (srfi srfi-64)
 	     (willy buffer))
 
-(define %test-suite-name "willy-buffer")
+(define %test-suite-name "buffer")
 (test-begin %test-suite-name)
 
 (test-equal "New buffers have empty tests."
