@@ -27,6 +27,7 @@ jobs:
       - name: Rust Test
         run: cargo nextest run
       - name: Rust Doctest
+        run: cargo test --doc
       - name: Scheme Test
         run: |
           find scheme/tests -type f -name "*.scm" -exec cargo run -- {} \; >test-results.txt
