@@ -17,9 +17,18 @@ backend-type must be either 'default or 'test."
   "Get the next terminal event."
   (--next-event))
 
-(define-public (tui-draw tui buffers)
-  "Draw a new screen for the given tui containing the given buffers."
-  (--tui-draw tui buffers))
+(define-public (tui-draw tui layouts)
+  "Draw a new screen for the given tui containing the given layouts.
+
+Layout should be a list of layout where each layout consists of an
+alist with the following keys:
+- buffer - The buffer to render.
+- x - The x position. If not present, then 0 will be used.
+- y - The y position. If not present, then 0 will be used.
+- width - The width of the layout.
+- height - The height of the layout."
+  (--tui-draw tui layouts)
+  tui)
 
 (define-public (tui-size tui)
   "Get the size of the terminal.

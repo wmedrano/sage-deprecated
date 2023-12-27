@@ -41,11 +41,11 @@
      "                                                                                "))
   (tui-state-for-test (new-tui 'test)))
 
-(test-equal "can render buffer"
+(test-equal "can render layout"
   (string-concatenate
    '(
-     "example text                                                                    \n"
-     "  pass: true _                                                                  \n"
+     "  1 example text                                                                \n"
+     "  2   pass: true                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
@@ -67,15 +67,21 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
-     "Looking at a buffer in Willy!                                                   "))
-  (let ((tui (new-tui 'test)))
-    (tui-draw tui (list (new-buffer "example text\n  pass: true ")))
-    (tui-state-for-test tui)))
+     "                                                                                "))
+  (tui-state-for-test
+   (tui-draw
+    (new-tui 'test)
+    `((
+       (buffer . ,(new-buffer "example text\n  pass: true "))
+       (x      . 0)
+       (y      . 0)
+       (width  . 80)
+       (height . 24))))))
 
-(test-equal "can render multiple buffers"
+(test-equal "can render multiple layouts"
   (string-concatenate
    '(
-     "buffer a_                                                                       \n"
+     "top left                                top right                               \n"
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
@@ -83,14 +89,6 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
-     "buffer b_                                                                       \n"
-     "                                                                                \n"
-     "                                                                                \n"
-     "                                                                                \n"
-     "                                                                                \n"
-     "                                                                                \n"
-     "                                                                                \n"
-     "buffer c_                                                                       \n"
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
@@ -98,12 +96,134 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
-     "Looking at a buffer in Willy!                                                   "))
-  (let ((tui   (new-tui 'test))
-	(buf-a (new-buffer "buffer a"))
-	(buf-b (new-buffer "buffer b"))
-	(buf-c (new-buffer "buffer c")))
-    (tui-draw tui (list buf-a buf-b buf-c))
-    (tui-state-for-test tui)))
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "  1 multiline middle                                                            \n"
+     "  2 has line numbers                                                            \n"
+     "                                                                                \n"
+     "                                                                                "))
+  (tui-state-for-test
+   (tui-draw
+    (new-tui 'test)
+    `(
+      ((buffer . ,(new-buffer "top left"))
+       (x      . 0)
+       (y      . 0)
+       (width  . 40)
+       (height . 20))
+      ((buffer . ,(new-buffer "top right"))
+       (x      . 40)
+       (y      . 0)
+       (width  . 40)
+       (height . 20))
+      ((buffer . ,(new-buffer "multiline middle\nhas line numbers"))
+       (x      . 0)
+       (y      . 20)
+       (width  . 40)
+       (height . 4))
+      ))))
+
+(test-equal "out of range layouts not rendered"
+  (string-concatenate
+   '(
+     "good                                                                            \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                "))
+  (tui-state-for-test
+   (tui-draw
+    (new-tui 'test)
+    `(
+      ((buffer . ,(new-buffer "partial out of range in x"))
+       (x      . 40)
+       (y      . 0)
+       (width  . 80)
+       (height . 24))
+      ((buffer . ,(new-buffer "partial out of range in y"))
+       (x      . 0)
+       (y      . 20)
+       (width  . 80)
+       (height . 24))
+      ((buffer . ,(new-buffer "completely out of range in x"))
+       (x      . 100)
+       (y      . 0)
+       (width  . 80)
+       (height . 24))
+      ((buffer . ,(new-buffer "completely out of range in y"))
+       (x      . 0)
+       (y      . 100)
+       (width  . 80)
+       (height . 24))
+      ((buffer . ,(new-buffer "good"))
+       (x      . 0)
+       (y      . 0)
+       (width  . 80)
+       (height . 24))))
+   ))
+
+(test-equal "layouts render on top of each other"
+  (string-concatenate
+   '(
+     "1112222111                                                                      \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                \n"
+     "                                                                                "))
+  (tui-state-for-test
+   (tui-draw
+    (new-tui 'test)
+    `(
+      ((buffer . ,(new-buffer "1111111111"))
+       (x      . 0)
+       (y      . 0)
+       (width  . 80)
+       (height . 24))
+      ((buffer . ,(new-buffer "2222222222222222"))
+       (x      . 3)
+       (y      . 0)
+       (width  . 4)
+       (height . 24))))))
 
 (test-end %test-suite-name)
