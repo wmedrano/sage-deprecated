@@ -111,7 +111,6 @@ impl Drop for TerminalBackend {
                     crossterm::event::DisableMouseCapture,
                     crossterm::terminal::LeaveAlternateScreen
                 );
-                let _ = b.set_cursor(0, 0);
                 let _ = crossterm::terminal::disable_raw_mode();
                 let _ = b.show_cursor();
             }
