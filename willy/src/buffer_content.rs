@@ -183,15 +183,16 @@ pub mod scm {
         unsafe { Scm::new_string(&s) }
     }
 
-    extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm) -> Scm {
-        let mut buffer_content = buffer_content;
+    // TODO: Fix.
+    extern "C" fn scm_buffer_content_insert_string(scm_buffer_content: Scm, string: Scm) -> Scm {
+        let mut buffer_content = scm_buffer_content;
         let buffer_content = match unsafe { BufferContent::from_scm_mut(&mut buffer_content) } {
             Some(b) => b,
-            None => return unsafe { Scm::new_string("") },
+            None => return scm_buffer_content,
         };
         let string = unsafe { string.to_string() };
         buffer_content.push_chars(string.chars());
-        Scm::EOL
+        scm_buffer_content
     }
 
     extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {

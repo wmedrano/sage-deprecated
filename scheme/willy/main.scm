@@ -35,31 +35,29 @@
 - 'buffer - The underlying buffer.
 - 'name   - The name of the buffer."
   buffer-registry)
-(define* (buffer-by-name name)
+(define* (buffer-by-name name #:key (allow-create? #f))
   "Get a buffer by its name."
-  (let ((found (find (lambda (buffer) (equal? (assoc-ref buffer 'name)
-					      name))
-		     (buffers))))
-    (if found
-	found
-	(register-buffer! `((buffer . ,(make-buffer-content))
-			    (name . ,name))))))
+  (let ((found (find (lambda (buffer) (equal? (buffer-name buffer)
+                                              name))
+                     (buffers))))
+    (or found
+        (if allow-create? (register-buffer! (make-buffer #:name name))))))
 (register-buffer!
- `((name   . "main")
-   (buffer . ,(make-buffer-content ";; Welcome to Willy! A Scheme based text environment.\n"))))
+ (make-buffer #:name "main"
+              #:string ";; Welcome to Willy! A Scheme based text environment.\n"))
 (register-buffer!
- `((name   . "*status*")
-   (buffer . ,(make-buffer-content "| Willy | Status: OK |"))))
+ (make-buffer #:name "*status*"
+              #:string "| Willy | Status: OK |"))
 
 (define* (make-layout #:key width height)
   "Define the layout of the ui."
   `(
-    ((buffer . ,(assoc-ref (buffer-by-name "main") 'buffer))
+    ((buffer . ,(buffer-by-name "main"))
      (x . 0)
      (y . 0)
      (width . ,width)
      (height . ,height))
-    ((buffer . ,(assoc-ref (buffer-by-name "*status*") 'buffer))
+    ((buffer . ,(buffer-by-name "*status*"))
      (x . 0)
      (y . ,(- height 1))
      (width . ,width)
@@ -68,12 +66,12 @@
 (define (handle-event! event)
   "Handle a single event."
   (let ((key    (assoc-ref event 'key))
-	(ctrl?  (assoc-ref event 'ctrl?))
-	(press? (equal? (assoc-ref event 'event-type) 'press)))
+    (ctrl?  (assoc-ref event 'ctrl?))
+    (press? (equal? (assoc-ref event 'event-type) 'press)))
     (cond
      ((and ctrl? (equal? key "c"))
       (quit!))
      ((and press? (equal? key backspace-key))
-      (buffer-content-pop-char (assoc-ref (buffer-by-name "main") 'buffer)))
+      (buffer-pop-char (buffer-by-name "main")))
      ((and press? key (not ctrl?))
-      (buffer-content-insert-string (assoc-ref (buffer-by-name "main") 'buffer) key)))))
+      (buffer-insert-string (buffer-by-name "main") key)))))

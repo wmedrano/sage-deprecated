@@ -286,7 +286,13 @@ pub mod scm {
         for (key, value) in widget.iter_pairs() {
             let key = key.to_symbol();
             match key.as_str() {
-                "buffer" => buffer_ptr = BufferContent::ptr_from_scm(value),
+                "buffer" => {
+                    if let Some((_, b)) =
+                        value.iter_pairs().find(|(k, _)| k.to_symbol() == "content")
+                    {
+                        buffer_ptr = BufferContent::ptr_from_scm(b);
+                    }
+                }
                 "x" => area.x = value.to_f64() as _,
                 "y" => area.y = value.to_f64() as _,
                 "width" => area.width = value.to_f64() as _,

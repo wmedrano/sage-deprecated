@@ -24,7 +24,7 @@ build-scheme:
 # Run all Willy tests.
 test:
 	make test-rust
-	make test-rust-doc
+	make test-rustdoc
 	make test-scheme
 
 # Run Rust tests.

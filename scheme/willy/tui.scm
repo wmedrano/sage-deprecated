@@ -18,7 +18,7 @@ backend-type must be either 'default or 'test."
 
 Layout should be a list of layout where each layout consists of an
 alist with the following keys:
-- buffer-content - The buffer content to render.
+- buffer - The buffer to render.
 - x - The x position. If not present, then 0 will be used.
 - y - The y position. If not present, then 0 will be used.
 - width - The width of the layout.
