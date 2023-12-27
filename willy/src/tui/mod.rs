@@ -1,11 +1,11 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Result};
 use crossterm::event;
 use flashkick::{foreign_object::ForeignObjectType, Scm};
 use ratatui::{prelude::Rect, style::Stylize, widgets::Block, Frame, Terminal};
 
-use crate::buffer::Buffer;
+use crate::buffer_content::BufferContent;
 
 use self::{terminal_backends::TerminalBackend, theme::ONEDARK_THEME, widgets::BufferWidget};
 
@@ -13,8 +13,11 @@ mod terminal_backends;
 mod theme;
 mod widgets;
 
+const TARGET_FPS: u64 = 60;
+
 pub struct Tui {
     terminal: Terminal<TerminalBackend>,
+    previous_draw_time: Instant,
 }
 
 impl ForeignObjectType for Tui {
@@ -28,18 +31,26 @@ pub enum BackendType {
 }
 
 impl Tui {
+    /// Create a new terminal UI with the given backend.
     pub fn new(backend_type: BackendType) -> Result<Tui> {
         let backend = TerminalBackend::new(backend_type)?;
         let mut terminal = Terminal::new(backend)?;
         terminal.hide_cursor()?;
-        Ok(Tui { terminal })
+        Ok(Tui {
+            terminal,
+            previous_draw_time: Instant::now(),
+        })
     }
 
+    /// Get the size of the terminal.
     pub fn size(&self) -> Result<(u16, u16)> {
         let sz = self.terminal.size()?;
         Ok((sz.width, sz.height))
     }
 
+    /// Get the current state of the buffer.
+    ///
+    /// Only valid if the backend is test.
     pub fn state(&self) -> Result<String> {
         match self.terminal.backend() {
             TerminalBackend::Default(_) => {
@@ -54,6 +65,7 @@ impl Tui {
         }
     }
 
+    /// Draw the widgets at the screen. Calls to draw are throttled to a reasonable fps.
     pub fn draw<'a>(&mut self, widgets: impl Iterator<Item = Widget<'a>>) -> Result<()> {
         self.terminal.draw(|frame: &mut Frame| {
             let window_area = frame.size();
@@ -68,13 +80,18 @@ impl Tui {
                 );
             }
         })?;
+        let target_time =
+            self.previous_draw_time + Duration::from_nanos(1_000_000_000 / TARGET_FPS);
+        let delay = target_time.duration_since(Instant::now());
+        std::thread::sleep(delay);
+        self.previous_draw_time = Instant::now();
         Ok(())
     }
 }
 
 pub struct Widget<'a> {
     pub area: Rect,
-    pub buffer: &'a Buffer,
+    pub buffer: &'a BufferContent,
 }
 
 fn next_event() -> Option<event::Event> {
@@ -108,11 +125,21 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
                 event::KeyEventKind::Release => Scm::new_symbol("release"),
                 event::KeyEventKind::Repeat => return None,
             };
-            let is_ctrl = modifiers.contains(event::KeyModifiers::CONTROL);
             let alist = Scm::with_alist([
                 (Scm::new_symbol("event-type"), event_type),
                 (Scm::new_symbol("key"), Scm::new_string(key)),
-                (Scm::new_symbol("ctrl?"), Scm::new_bool(is_ctrl)),
+                (
+                    Scm::new_symbol("shift?"),
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
+                ),
+                (
+                    Scm::new_symbol("ctrl?"),
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
+                ),
+                (
+                    Scm::new_symbol("alt?"),
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
+                ),
             ]);
             Some(alist)
         }
@@ -132,7 +159,7 @@ pub mod scm {
     };
     use ratatui::prelude::Rect;
 
-    use crate::buffer::Buffer;
+    use crate::buffer_content::BufferContent;
 
     use super::{event_to_scm, next_event, BackendType, Tui, Widget};
 
@@ -153,18 +180,18 @@ pub mod scm {
 
     impl Module for TuiModule {
         fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy internal tui\0").unwrap()
+            CStr::from_bytes_with_nul(b"willy internal\0").unwrap()
         }
 
         unsafe fn define(&self, ctx: &mut flashkick::module::ModuleInitContext) {
             ctx.define_type::<Tui>();
             ctx.define_subr_0(
-                CStr::from_bytes_with_nul(b"--next-event\0").unwrap(),
-                scm_next_event,
+                CStr::from_bytes_with_nul(b"--next-event-from-terminal\0").unwrap(),
+                scm_next_event_from_terminal,
             );
             ctx.define_subr_1(
-                CStr::from_bytes_with_nul(b"--new-tui\0").unwrap(),
-                scm_new_tui,
+                CStr::from_bytes_with_nul(b"--make-tui\0").unwrap(),
+                scm_make_tui,
                 1,
             );
             ctx.define_subr_1(
@@ -190,7 +217,7 @@ pub mod scm {
         }
     }
 
-    pub extern "C" fn scm_next_event() -> Scm {
+    pub extern "C" fn scm_next_event_from_terminal() -> Scm {
         catch_unwind(|| {
             let e = match next_event() {
                 Some(e) => e,
@@ -202,7 +229,7 @@ pub mod scm {
         .scm_unwrap()
     }
 
-    extern "C" fn scm_new_tui(backend_type: Scm) -> Scm {
+    extern "C" fn scm_make_tui(backend_type: Scm) -> Scm {
         catch_unwind(|| {
             let backend_type = match unsafe { backend_type.to_symbol().as_str() } {
                 "default" => BackendType::Default,
@@ -231,21 +258,25 @@ pub mod scm {
 
     extern "C" fn scm_tui_size(tui: Scm) -> Scm {
         catch_unwind(|| {
-            let tui = unsafe { Tui::from_scm(&tui) };
-            let (width, height) = tui.size().scm_unwrap();
-            unsafe {
+            let make_size = |width, height| unsafe {
                 Scm::with_alist([
                     (Scm::new_symbol("width"), Scm::new_u16(width)),
                     (Scm::new_symbol("height"), Scm::new_u16(height)),
                 ])
-            }
+            };
+            let tui = match unsafe { Tui::from_scm(&tui) } {
+                Some(t) => t,
+                None => return make_size(0, 0),
+            };
+            let (width, height) = tui.size().scm_unwrap();
+            make_size(width, height)
         })
         .map_err(|e| format!("{e:?}"))
         .scm_unwrap()
     }
 
     unsafe fn scm_widget_to_widget(widget: Scm) -> Widget<'static> {
-        let mut buffer_ptr: *const Buffer = std::ptr::null();
+        let mut buffer_ptr: *const BufferContent = std::ptr::null();
         let mut area = Rect {
             x: 0,
             y: 0,
@@ -255,7 +286,7 @@ pub mod scm {
         for (key, value) in widget.iter_pairs() {
             let key = key.to_symbol();
             match key.as_str() {
-                "buffer" => buffer_ptr = Buffer::ptr_from_scm(value),
+                "buffer" => buffer_ptr = BufferContent::ptr_from_scm(value),
                 "x" => area.x = value.to_f64() as _,
                 "y" => area.y = value.to_f64() as _,
                 "width" => area.width = value.to_f64() as _,
@@ -273,7 +304,10 @@ pub mod scm {
     extern "C" fn scm_tui_draw(tui: Scm, widgets: Scm) -> Scm {
         catch_unwind(|| {
             let mut tui = tui;
-            let tui = unsafe { Tui::from_scm_mut(&mut tui) };
+            let tui = match unsafe { Tui::from_scm_mut(&mut tui) } {
+                Some(t) => t,
+                None => return Scm::EOL,
+            };
             let widgets = unsafe { widgets.iter().map(|scm| scm_widget_to_widget(scm)) };
             tui.draw(widgets).scm_unwrap();
             Scm::EOL
@@ -285,7 +319,10 @@ pub mod scm {
     extern "C" fn scm_tui_state_for_test(tui: Scm) -> Scm {
         catch_unwind(|| {
             let mut tui = tui;
-            let tui = unsafe { Tui::from_scm_mut(&mut tui) };
+            let tui = match unsafe { Tui::from_scm_mut(&mut tui) } {
+                Some(t) => t,
+                None => return unsafe { Scm::new_string("") },
+            };
             let state = tui.state().scm_unwrap();
             unsafe { Scm::new_string(&state) }
         })

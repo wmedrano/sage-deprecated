@@ -1,10 +1,7 @@
 use anyhow::{anyhow, Result};
 use std::{any::TypeId, collections::HashMap, ffi::c_void, sync::Mutex};
 
-use crate::{
-    err::{throw_error, ResultToScm},
-    ffi, Scm,
-};
+use crate::{err::ResultToScm, ffi, Scm};
 
 /// Allows converting between Rust structs and Scheme objects.
 pub trait ForeignObjectType: 'static + Sized {
@@ -49,25 +46,18 @@ pub trait ForeignObjectType: 'static + Sized {
     ///
     /// # Safety
     /// Calls C code.
-    unsafe fn from_scm(obj: &Scm) -> &Self {
-        let raw_ptr: *mut Self = Self::ptr_from_scm(*obj);
-        if raw_ptr.is_null() {
-            throw_error(anyhow!("object is null"));
-        }
-        let ptr: *const Self = raw_ptr.cast();
-        &*ptr
+    unsafe fn from_scm(obj: &Scm) -> Option<&Self> {
+        let ptr: *mut Self = Self::ptr_from_scm(*obj);
+        ptr.as_ref()
     }
 
     /// Get a mutable reference of the underlying object.
     ///
     /// # Safety
     /// Calls C code.
-    unsafe fn from_scm_mut(obj: &mut Scm) -> &mut Self {
+    unsafe fn from_scm_mut(obj: &mut Scm) -> Option<&mut Self> {
         let ptr = Self::ptr_from_scm(*obj);
-        if ptr.is_null() {
-            throw_error(anyhow!("object is null"));
-        }
-        &mut *ptr
+        ptr.as_mut()
     }
 
     /// Drop the Scheme object.
