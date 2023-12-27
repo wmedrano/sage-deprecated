@@ -13,13 +13,17 @@
    #:should-run-p (lambda () main-tui)
    #:make-layout make-layout
    #:event-pump next-event-from-terminal
-   #:event-handler handle-event!))
+   #:event-handler handle-event!)
+  ;; Just in case run-event-loop somehow exit without calling quit.
+  (quit!))
 
 (define main-tui #f)
 (define* (quit!)
   "Exit/quit out of Willy."
-  (delete-tui main-tui)
-  (set! main-tui #f))
+  (if main-tui
+      (begin
+        (delete-tui main-tui)
+        (set! main-tui #f))))
 
 (define buffer-registry '())
 (define* (register-buffer! buffer)
