@@ -1,5 +1,5 @@
 (define-module (willy buffer))
-(use-modules (willy internal buffer-content))
+(use-modules (willy internal))
 
 (export buffer-content-to-string)
 (define* (buffer-content-to-string buffer-content)

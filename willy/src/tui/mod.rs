@@ -180,14 +180,14 @@ pub mod scm {
 
     impl Module for TuiModule {
         fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy internal tui\0").unwrap()
+            CStr::from_bytes_with_nul(b"willy internal\0").unwrap()
         }
 
         unsafe fn define(&self, ctx: &mut flashkick::module::ModuleInitContext) {
             ctx.define_type::<Tui>();
             ctx.define_subr_0(
-                CStr::from_bytes_with_nul(b"--next-event\0").unwrap(),
-                scm_next_event,
+                CStr::from_bytes_with_nul(b"--next-event-from-terminal\0").unwrap(),
+                scm_next_event_from_terminal,
             );
             ctx.define_subr_1(
                 CStr::from_bytes_with_nul(b"--make-tui\0").unwrap(),
@@ -217,7 +217,7 @@ pub mod scm {
         }
     }
 
-    pub extern "C" fn scm_next_event() -> Scm {
+    pub extern "C" fn scm_next_event_from_terminal() -> Scm {
         catch_unwind(|| {
             let e = match next_event() {
                 Some(e) => e,
@@ -258,14 +258,18 @@ pub mod scm {
 
     extern "C" fn scm_tui_size(tui: Scm) -> Scm {
         catch_unwind(|| {
-            let tui = unsafe { Tui::from_scm(&tui) };
-            let (width, height) = tui.size().scm_unwrap();
-            unsafe {
+            let make_size = |width, height| unsafe {
                 Scm::with_alist([
                     (Scm::new_symbol("width"), Scm::new_u16(width)),
                     (Scm::new_symbol("height"), Scm::new_u16(height)),
                 ])
-            }
+            };
+            let tui = match unsafe { Tui::from_scm(&tui) } {
+                Some(t) => t,
+                None => return make_size(0, 0),
+            };
+            let (width, height) = tui.size().scm_unwrap();
+            make_size(width, height)
         })
         .map_err(|e| format!("{e:?}"))
         .scm_unwrap()
@@ -300,7 +304,10 @@ pub mod scm {
     extern "C" fn scm_tui_draw(tui: Scm, widgets: Scm) -> Scm {
         catch_unwind(|| {
             let mut tui = tui;
-            let tui = unsafe { Tui::from_scm_mut(&mut tui) };
+            let tui = match unsafe { Tui::from_scm_mut(&mut tui) } {
+                Some(t) => t,
+                None => return Scm::EOL,
+            };
             let widgets = unsafe { widgets.iter().map(|scm| scm_widget_to_widget(scm)) };
             tui.draw(widgets).scm_unwrap();
             Scm::EOL
@@ -312,7 +319,10 @@ pub mod scm {
     extern "C" fn scm_tui_state_for_test(tui: Scm) -> Scm {
         catch_unwind(|| {
             let mut tui = tui;
-            let tui = unsafe { Tui::from_scm_mut(&mut tui) };
+            let tui = match unsafe { Tui::from_scm_mut(&mut tui) } {
+                Some(t) => t,
+                None => return unsafe { Scm::new_string("") },
+            };
             let state = tui.state().scm_unwrap();
             unsafe { Scm::new_string(&state) }
         })

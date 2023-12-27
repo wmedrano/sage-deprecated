@@ -12,7 +12,14 @@ run-shell:
 
 # Build Willy.
 build:
+	make build-rust
+	make build-scheme
+
+build-rust:
 	cargo build
+
+build-scheme:
+	find scheme/ -type f -name "*.scm" -exec guild compile {} \;
 
 # Run all Willy tests.
 test:

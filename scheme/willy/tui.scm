@@ -1,5 +1,5 @@
 (define-module (willy tui))
-(use-modules (willy internal tui))
+(use-modules (willy internal))
 
 (export backspace-key)
 (define* backspace-key "<backspace>")
@@ -14,11 +14,6 @@ backend-type must be either 'default or 'test."
 (define* (delete-tui tui)
   "Delete a terminal UI."
   (--delete-tui tui))
-
-(export next-event)
-(define* (next-event)
-  "Get the next terminal event."
-  (--next-event))
 
 (export tui-draw)
 (define* (tui-draw tui layouts)

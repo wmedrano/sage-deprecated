@@ -142,7 +142,7 @@ pub mod scm {
 
     impl Module for BufferContentModule {
         fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy internal buffer-content\0").unwrap()
+            CStr::from_bytes_with_nul(b"willy internal\0").unwrap()
         }
 
         unsafe fn define(&self, ctx: &mut ModuleInitContext) {
@@ -175,22 +175,31 @@ pub mod scm {
     }
 
     extern "C" fn scm_buffer_content_to_string(buffer: Scm) -> Scm {
-        let buffer = unsafe { BufferContent::from_scm(&buffer) };
+        let buffer = match unsafe { BufferContent::from_scm(&buffer) } {
+            Some(b) => b,
+            None => return unsafe { Scm::new_string("") },
+        };
         let s = buffer.to_string();
         unsafe { Scm::new_string(&s) }
     }
 
-    extern "C" fn scm_buffer_content_insert_string(buffer: Scm, string: Scm) -> Scm {
-        let mut buffer = buffer;
-        let buffer = unsafe { BufferContent::from_scm_mut(&mut buffer) };
+    extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm) -> Scm {
+        let mut buffer_content = buffer_content;
+        let buffer_content = match unsafe { BufferContent::from_scm_mut(&mut buffer_content) } {
+            Some(b) => b,
+            None => return unsafe { Scm::new_string("") },
+        };
         let string = unsafe { string.to_string() };
-        buffer.push_chars(string.chars());
+        buffer_content.push_chars(string.chars());
         Scm::EOL
     }
 
-    extern "C" fn scm_buffer_content_pop_char(buffer: Scm) -> Scm {
-        let mut buffer_content = buffer;
-        let buffer_content = unsafe { BufferContent::from_scm_mut(&mut buffer_content) };
+    extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {
+        let mut buffer_content = buffer_content;
+        let buffer_content = match unsafe { BufferContent::from_scm_mut(&mut buffer_content) } {
+            Some(b) => b,
+            None => return unsafe { Scm::new_string("") },
+        };
         match buffer_content.pop_char() {
             Some(c) => unsafe {
                 let mut tmp_buffer = [0u8; 4];

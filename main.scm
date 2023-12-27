@@ -2,4 +2,7 @@
 !#
 (use-modules (willy main))
 
-(run-willy!)
+(define (main)
+  (run-willy!))
+
+(main)
