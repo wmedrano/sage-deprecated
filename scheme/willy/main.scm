@@ -19,7 +19,7 @@
   (set! should-run #t)
   (set! main-tui (new-tui))
   (while should-run
-    (usleep 10000)
+    (usleep (round (/ 1000000 60)))
     (tui-draw main-tui
 	      (let ((size (tui-size main-tui)))
 		(make-layout #:width (assoc-ref size 'width)

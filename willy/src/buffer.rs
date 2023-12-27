@@ -29,7 +29,7 @@ impl Buffer {
         self.lines.join("\n")
     }
 
-    pub fn iter_lines(&self) -> impl Iterator<Item = &str> {
+    pub fn iter_lines(&self) -> impl Clone + Iterator<Item = &str> {
         self.lines.iter().map(|s| s.as_str())
     }
 
