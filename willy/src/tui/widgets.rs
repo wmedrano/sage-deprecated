@@ -1,43 +1,14 @@
 use ratatui::{
     prelude::Rect,
-    style::{Color, Style, Stylize},
+    style::{Style, Stylize},
     widgets::{Block, Widget},
 };
 
 use crate::buffer::Buffer;
 
+use super::theme::ONEDARK_THEME;
+
 const LINE_NUMBER_WIDTH: u16 = 3;
-
-#[derive(Copy, Clone)]
-pub struct ColorScheme {
-    pub black1: Color,
-    pub black2: Color,
-    pub black3: Color,
-    pub red: Color,
-    pub green: Color,
-    pub yellow: Color,
-    pub blue: Color,
-    pub purple: Color,
-    pub cyan: Color,
-    pub white1: Color,
-    pub white2: Color,
-    pub white3: Color,
-}
-
-pub const COLOR_SCHEME: ColorScheme = ColorScheme {
-    black1: Color::Rgb(33, 37, 43),
-    black2: Color::Rgb(40, 44, 52),
-    black3: Color::Rgb(50, 56, 66),
-    red: Color::Rgb(224, 108, 117),
-    green: Color::Rgb(152, 195, 121),
-    yellow: Color::Rgb(229, 192, 123),
-    blue: Color::Rgb(97, 175, 239),
-    purple: Color::Rgb(198, 120, 221),
-    cyan: Color::Rgb(86, 182, 194),
-    white1: Color::Rgb(171, 178, 191),
-    white2: Color::Rgb(212, 216, 223),
-    white3: Color::Rgb(246, 247, 249),
-};
 
 pub struct BufferWidget<'a> {
     buffer: &'a Buffer,
@@ -74,9 +45,9 @@ impl<'a> Widget for BufferWidget<'a> {
         let selected_line = if line_count == 0 { 0 } else { line_count - 1 };
         for (idx, (line, y)) in lines.zip(positions).enumerate() {
             let bg = if selected_line == idx {
-                COLOR_SCHEME.black3
+                ONEDARK_THEME.black3
             } else {
-                COLOR_SCHEME.black1
+                ONEDARK_THEME.black1
             };
             let line_area = Rect {
                 x: area.x,
@@ -94,7 +65,7 @@ impl<'a> Widget for BufferWidget<'a> {
                     y,
                     line_text,
                     LINE_NUMBER_WIDTH as usize,
-                    Style::new().fg(COLOR_SCHEME.white1),
+                    Style::new().fg(ONEDARK_THEME.white1),
                 );
             }
             // Line text.
@@ -103,11 +74,11 @@ impl<'a> Widget for BufferWidget<'a> {
                 y,
                 line,
                 text_width as usize,
-                Style::new().fg(COLOR_SCHEME.white3),
+                Style::new().fg(ONEDARK_THEME.white3),
             );
             // Cursor.
             if should_render_line_number && idx == selected_line && cursor_x < area.right() {
-                buf.set_stringn(cursor_x, y, " ", 1, Style::new().bg(COLOR_SCHEME.white1));
+                buf.set_stringn(cursor_x, y, " ", 1, Style::new().bg(ONEDARK_THEME.white1));
             }
         }
     }

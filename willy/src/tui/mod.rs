@@ -7,9 +7,10 @@ use ratatui::{prelude::Rect, style::Stylize, widgets::Block, Frame, Terminal};
 
 use crate::buffer::Buffer;
 
-use self::{terminal_backends::TerminalBackend, widgets::BufferWidget};
+use self::{terminal_backends::TerminalBackend, theme::ONEDARK_THEME, widgets::BufferWidget};
 
 mod terminal_backends;
+mod theme;
 mod widgets;
 
 pub struct Tui {
@@ -56,10 +57,7 @@ impl Tui {
     pub fn draw<'a>(&mut self, widgets: impl Iterator<Item = Widget<'a>>) -> Result<()> {
         self.terminal.draw(|frame: &mut Frame| {
             let window_area = frame.size();
-            frame.render_widget(
-                Block::default().bg(widgets::COLOR_SCHEME.black1),
-                window_area,
-            );
+            frame.render_widget(Block::default().bg(ONEDARK_THEME.black1), window_area);
             let should_render_widget = |w: &Widget| {
                 w.area.width > 0 && w.area.height > 0 && window_area.intersection(w.area) == w.area
             };
