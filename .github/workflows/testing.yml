@@ -23,12 +23,14 @@ jobs:
         uses: taiki-e/install-action@nextest
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1
-      - name: Build
-        run: make build
+      - name: Rust Build
+        run: make build-rust
       - name: Rust Test
         run: make test-rust
       - name: Rust Doctest
         run: make test-rustdoc
+      - name: Scheme Build
+        runs: make build-scheme
       - name: Scheme Test
         run: make test-scheme
       - name: Detailed Scheme Test Results
