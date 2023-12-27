@@ -5,14 +5,14 @@
 (define %test-suite-name "willy-tui")
 (test-begin %test-suite-name)
 
-(test-error "new-tui with bad backend is err"
-  (new-tui 'bad-backend-type))
+(test-error "make-tui with bad backend is err"
+  (make-tui 'bad-backend-type))
 
 (test-equal "tui test size is fixed value"
   '((width . 80) (height . 24))
-  (tui-size (new-tui 'test)))
+  (tui-size (make-tui 'test)))
 
-(test-equal "new-tui is ok"
+(test-equal "make-tui is ok"
   (string-concatenate
    '(
      "                                                                                \n"
@@ -39,7 +39,7 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                "))
-  (tui-state-for-test (new-tui 'test)))
+  (tui-state-for-test (make-tui 'test)))
 
 (test-equal "can render layout"
   (string-concatenate
@@ -70,9 +70,9 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (new-tui 'test)
+    (make-tui 'test)
     `((
-       (buffer . ,(new-buffer "example text\n  pass: true "))
+       (buffer . ,(make-buffer-content "example text\n  pass: true "))
        (x      . 0)
        (y      . 0)
        (width  . 80)
@@ -107,19 +107,19 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (new-tui 'test)
+    (make-tui 'test)
     `(
-      ((buffer . ,(new-buffer "top left"))
+      ((buffer . ,(make-buffer-content "top left"))
        (x      . 0)
        (y      . 0)
        (width  . 40)
        (height . 20))
-      ((buffer . ,(new-buffer "top right"))
+      ((buffer . ,(make-buffer-content "top right"))
        (x      . 40)
        (y      . 0)
        (width  . 40)
        (height . 20))
-      ((buffer . ,(new-buffer "multiline middle\nhas line numbers"))
+      ((buffer . ,(make-buffer-content "multiline middle\nhas line numbers"))
        (x      . 0)
        (y      . 20)
        (width  . 40)
@@ -155,29 +155,29 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (new-tui 'test)
+    (make-tui 'test)
     `(
-      ((buffer . ,(new-buffer "partial out of range in x"))
+      ((buffer . ,(make-buffer-content "partial out of range in x"))
        (x      . 40)
        (y      . 0)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(new-buffer "partial out of range in y"))
+      ((buffer . ,(make-buffer-content "partial out of range in y"))
        (x      . 0)
        (y      . 20)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(new-buffer "completely out of range in x"))
+      ((buffer . ,(make-buffer-content "completely out of range in x"))
        (x      . 100)
        (y      . 0)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(new-buffer "completely out of range in y"))
+      ((buffer . ,(make-buffer-content "completely out of range in y"))
        (x      . 0)
        (y      . 100)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(new-buffer "good"))
+      ((buffer . ,(make-buffer-content "good"))
        (x      . 0)
        (y      . 0)
        (width  . 80)
@@ -213,14 +213,14 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (new-tui 'test)
+    (make-tui 'test)
     `(
-      ((buffer . ,(new-buffer "1111111111"))
+      ((buffer . ,(make-buffer-content "1111111111"))
        (x      . 0)
        (y      . 0)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(new-buffer "2222222222222222"))
+      ((buffer . ,(make-buffer-content "2222222222222222"))
        (x      . 3)
        (y      . 0)
        (width  . 4)

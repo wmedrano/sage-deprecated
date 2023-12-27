@@ -1,28 +1,32 @@
 (define-module (willy tui))
 (use-modules (willy internal tui))
 
-(define-public backspace-key "<backspace>")
+(export backspace-key)
+(define* backspace-key "<backspace>")
 
-(export new-tui)
-(define* (new-tui #:optional backend-type)
+(export make-tui)
+(define* (make-tui #:optional backend-type)
   "Create a new terminal UI.
 backend-type must be either 'default or 'test."
-  (--new-tui (or backend-type 'default)))
+  (--make-tui (or backend-type 'default)))
 
-(define-public (delete-tui tui)
+(export delete-tui)
+(define* (delete-tui tui)
   "Delete a terminal UI."
   (--delete-tui tui))
 
-(define-public (next-event)
+(export next-event)
+(define* (next-event)
   "Get the next terminal event."
   (--next-event))
 
-(define-public (tui-draw tui layouts)
+(export tui-draw)
+(define* (tui-draw tui layouts)
   "Draw a new screen for the given tui containing the given layouts.
 
 Layout should be a list of layout where each layout consists of an
 alist with the following keys:
-- buffer - The buffer to render.
+- buffer-content - The buffer content to render.
 - x - The x position. If not present, then 0 will be used.
 - y - The y position. If not present, then 0 will be used.
 - width - The width of the layout.
@@ -30,14 +34,16 @@ alist with the following keys:
   (--tui-draw tui layouts)
   tui)
 
-(define-public (tui-size tui)
+(export tui-size)
+(define* (tui-size tui)
   "Get the size of the terminal.
 
 Example return value: '((width . 80) (height . 24))"
   (--tui-size tui))
 
-(define-public (tui-state-for-test tui)
+(export tui-state-for-test)
+(define* (tui-state-for-test tui)
   "Get the state (as a string) for the test tui.
 
-The tui must have been constructed with (new-tui 'test)"
+The tui must have been constructed with (make-tui 'test)"
   (--tui-state-for-test tui))

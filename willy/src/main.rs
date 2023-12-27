@@ -1,6 +1,6 @@
 use std::panic::catch_unwind;
 
-mod buffer;
+mod buffer_content;
 mod tui;
 
 fn main() {
@@ -8,7 +8,7 @@ fn main() {
         flashkick::boot_guile(std::env::args(), || {
             catch_unwind(|| {
                 tui::scm::scm_init_willy_internal_tui_module();
-                buffer::scm::scm_init_willy_internal_buffer_module();
+                buffer_content::scm::scm_init_willy_internal_buffer_content();
                 flashkick::shell(std::env::args());
             })
         })

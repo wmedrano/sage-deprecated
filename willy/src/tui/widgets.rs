@@ -4,19 +4,19 @@ use ratatui::{
     widgets::{Block, Widget},
 };
 
-use crate::buffer::Buffer;
+use crate::buffer_content::BufferContent;
 
 use super::theme::ONEDARK_THEME;
 
 const LINE_NUMBER_WIDTH: u16 = 3;
 
 pub struct BufferWidget<'a> {
-    buffer: &'a Buffer,
+    buffer: &'a BufferContent,
     render_line_numbers: bool,
 }
 
 impl<'a> BufferWidget<'a> {
-    pub fn new(buffer: &'a Buffer, render_line_numbers: bool) -> BufferWidget<'a> {
+    pub fn new(buffer: &'a BufferContent, render_line_numbers: bool) -> BufferWidget<'a> {
         BufferWidget {
             buffer,
             render_line_numbers,

@@ -1,24 +1,24 @@
 (define-module (willy buffer))
-(use-modules (willy internal buffer))
+(use-modules (willy internal buffer-content))
 
-(define-public (buffer-to-text buffer)
-  (--buffer-to-text buffer))
+(export buffer-content-to-string)
+(define* (buffer-content-to-string buffer-content)
+  "Convert the contents of buffer-content to a string."
+  (--buffer-content-to-string buffer-content))
 
-(define-public (buffer-pop-char buffer)
-  (--buffer-pop-char buffer))
+(export buffer-content-pop-char)
+(define* (buffer-content-pop-char buffer-content)
+  "Pop a character from buffer-content."
+  (--buffer-content-pop-char buffer-content))
 
-(define-public (buffer-insert-string buffer string)
-  (--buffer-insert-string buffer string))
+(export buffer-content-insert-string)
+(define* (buffer-content-insert-string buffer-content string)
+  (--buffer-content-insert-string buffer-content string)
+  buffer-content)
 
-(export new-buffer)
-(define* (new-buffer #:optional text)
+(export make-buffer-content)
+(define* (make-buffer-content #:optional string)
   "Create a new buffer."
-  (let ((b (--new-buffer)))
-    (if text (buffer-insert-string b text))
-    b))
-
-(define-public (new-scratch-buffer)
-  "Create a new scratch buffer."
-  (new-buffer scratch-buffer-text))
-
-(define scratch-buffer-text ";; Welcome to Willy! A Scheme based text editor.\n")
+  (if string
+      (buffer-content-insert-string (--make-buffer-content) string)
+      (--make-buffer-content)))

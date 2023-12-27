@@ -18,12 +18,8 @@ impl TerminalBackend {
         match backend_type {
             BackendType::Default => {
                 let backend = CrosstermBackend::new(std::io::stdout());
+                crossterm::execute!(std::io::stdout(), crossterm::terminal::EnterAlternateScreen)?;
                 crossterm::terminal::enable_raw_mode()?;
-                crossterm::execute!(
-                    std::io::stdout(),
-                    crossterm::terminal::EnterAlternateScreen,
-                    crossterm::event::EnableMouseCapture
-                )?;
                 Ok(TerminalBackend::Default(backend))
             }
             BackendType::Test => {
@@ -108,7 +104,6 @@ impl Drop for TerminalBackend {
             TerminalBackend::Default(b) => {
                 let _ = crossterm::execute!(
                     std::io::stdout(),
-                    crossterm::event::DisableMouseCapture,
                     crossterm::terminal::LeaveAlternateScreen
                 );
                 let _ = crossterm::terminal::disable_raw_mode();
