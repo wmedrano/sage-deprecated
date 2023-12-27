@@ -32,7 +32,7 @@ test-rust:
 	cargo nextest run
 
 # Run Rust doc tests.
-test-rust-doc:
+test-rustdoc:
 	cargo test --doc
 
 # Run Scheme tests.
