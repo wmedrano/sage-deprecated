@@ -29,6 +29,10 @@ impl Buffer {
         self.lines.join("\n")
     }
 
+    pub fn iter_lines(&self) -> impl Clone + Iterator<Item = &str> {
+        self.lines.iter().map(|s| s.as_str())
+    }
+
     /// Add a new character to the buffer.
     pub fn push_char(&mut self, ch: char) {
         if self.lines.is_empty() {
@@ -118,7 +122,7 @@ mod tests {
     }
 }
 
-mod scm {
+pub mod scm {
     use std::ffi::CStr;
 
     use flashkick::{

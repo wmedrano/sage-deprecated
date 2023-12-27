@@ -105,13 +105,14 @@ impl Backend for TerminalBackend {
 impl Drop for TerminalBackend {
     fn drop(&mut self) {
         match self {
-            TerminalBackend::Default(_) => {
+            TerminalBackend::Default(b) => {
                 let _ = crossterm::execute!(
                     std::io::stdout(),
                     crossterm::event::DisableMouseCapture,
                     crossterm::terminal::LeaveAlternateScreen
                 );
                 let _ = crossterm::terminal::disable_raw_mode();
+                let _ = b.show_cursor();
             }
             TerminalBackend::Test(_) => {}
         }
