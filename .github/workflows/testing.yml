@@ -30,7 +30,7 @@ jobs:
       - name: Rust Doctest
         run: make test-rustdoc
       - name: Scheme Build
-        runs: make build-scheme
+        run: make build-scheme
       - name: Scheme Test
         run: make test-scheme
       - name: Detailed Scheme Test Results
