@@ -41,7 +41,7 @@
      "                                                                                "))
   (tui-state-for-test (make-tui 'test)))
 
-(test-equal "can render layout"
+(test-equal "can render window"
   (string-concatenate
    '(
      "example text                                                                    \n"
@@ -78,7 +78,7 @@
        (width  . 80)
        (height . 24))))))
 
-(test-equal "can render multiple layouts"
+(test-equal "can render multiple windows"
   (string-concatenate
    '(
      "top left                                top right                               \n"
@@ -126,7 +126,7 @@
        (height . 4))
       ))))
 
-(test-equal "out of range layouts not rendered"
+(test-equal "out of range windows not rendered"
   (string-concatenate
    '(
      "good                                                                            \n"
@@ -184,7 +184,7 @@
        (height . 24))))
    ))
 
-(test-equal "layouts render on top of each other"
+(test-equal "windows render on top of each other"
   (string-concatenate
    '(
      "1112222111                                                                      \n"

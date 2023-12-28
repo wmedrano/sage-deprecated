@@ -64,11 +64,11 @@ impl Tui {
     }
 
     /// Draw the widgets at the screen. Calls to draw are throttled to a reasonable fps.
-    pub fn draw<'a>(&mut self, widgets: impl Iterator<Item = Layout<'a>>) -> Result<()> {
+    pub fn draw<'a>(&mut self, widgets: impl Iterator<Item = Window<'a>>) -> Result<()> {
         self.terminal.draw(|frame: &mut Frame| {
             let window_area = frame.size();
             frame.render_widget(Block::default().bg(ONEDARK_THEME.black1), window_area);
-            let should_render_widget = |w: &Layout| {
+            let should_render_widget = |w: &Window| {
                 w.area.width > 0 && w.area.height > 0 && window_area.intersection(w.area) == w.area
             };
             for widget in widgets.filter(should_render_widget) {
@@ -85,7 +85,7 @@ impl Tui {
 }
 
 /// TODO: Remove indirection and use the real widgets directly.
-pub struct Layout<'a> {
+pub struct Window<'a> {
     pub area: Rect,
     pub widget: BufferWidget<'a>,
 }
@@ -162,7 +162,7 @@ pub mod scm {
 
     use crate::buffer_content::{BufferContent, EMPTY_BUFFER_CONTENT};
 
-    use super::{event_to_scm, next_event, widgets::BufferWidget, BackendType, Layout, Tui};
+    use super::{event_to_scm, next_event, widgets::BufferWidget, BackendType, Tui, Window};
 
     /// Initialize the `(willy tui)` module.
     ///
@@ -276,7 +276,7 @@ pub mod scm {
         .scm_unwrap()
     }
 
-    unsafe fn scm_widget_to_widget(widget: Scm) -> Layout<'static> {
+    unsafe fn scm_widget_to_widget(widget: Scm) -> Window<'static> {
         let mut ret = BufferWidget {
             buffer: &EMPTY_BUFFER_CONTENT,
             line_numbers: false,
@@ -320,10 +320,10 @@ pub mod scm {
                 _ => (),
             }
         }
-        Layout { area, widget: ret }
+        Window { area, widget: ret }
     }
 
-    extern "C" fn scm_tui_draw(tui: Scm, widgets: Scm) -> Scm {
+    extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
         catch_unwind(|| {
             let mut tui = tui;
             unsafe {
@@ -331,7 +331,7 @@ pub mod scm {
                     Some(t) => t,
                     None => return Scm::EOL,
                 };
-                let widgets = widgets.iter().map(|scm| scm_widget_to_widget(scm));
+                let widgets = windows.iter().map(|scm| scm_widget_to_widget(scm));
                 tui.draw(widgets)
             }
             .scm_unwrap();

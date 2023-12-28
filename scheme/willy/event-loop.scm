@@ -15,7 +15,7 @@
   "Run the Willy text editor.
 tui - The terminal UI to use.
 should-run-p - Condition to determine if the application should continue running.
-make-layout - A function that takes a #:width and #:height and returns a layout.
+make-layout - A function that takes a #:width and #:height and returns a list of windows.
 event-pump - A function that returns the next event or #f if there are none.
 event-handler - A function that handles a single event returned by event-pump."
   (while (should-run-p)
