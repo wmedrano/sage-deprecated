@@ -89,6 +89,7 @@ impl Tui {
     }
 }
 
+/// TODO: Remove indirection and use the real widgets directly.
 pub struct Widget<'a> {
     pub area: Rect,
     pub buffer: &'a BufferContent,
@@ -117,6 +118,7 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
                 event::KeyCode::Enter => '\n'.encode_utf8(&mut tmp_ch_buffer),
                 event::KeyCode::Tab => '\t'.encode_utf8(&mut tmp_ch_buffer),
                 event::KeyCode::Backspace => "<backspace>",
+                event::KeyCode::Esc => "<esc>",
                 event::KeyCode::Char(ch) => ch.encode_utf8(&mut tmp_ch_buffer),
                 _ => return None,
             };

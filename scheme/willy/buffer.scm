@@ -3,6 +3,7 @@
             buffer-to-string
 	    buffer-pop-char
 	    buffer-insert-string
+	    buffer-set-string
             buffer-name)
   #:use-module (willy internal))
 
@@ -32,4 +33,9 @@
 (define* (buffer-insert-string buffer string)
   "Insert string into the contents of buffer."
   (--buffer-content-insert-string (buffer-content buffer) string)
+  buffer)
+
+(define* (buffer-set-string buffer string)
+  "Set the contents of the buffer to string."
+  (--buffer-content-set-string (buffer-content buffer) string)
   buffer)

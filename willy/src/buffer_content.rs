@@ -17,7 +17,6 @@ impl BufferContent {
     }
 
     /// Create a new buffer from a string.
-    #[cfg(test)]
     pub fn with_str(s: &str) -> BufferContent {
         BufferContent {
             lines: s.split('\n').map(str::to_string).collect(),
@@ -161,6 +160,11 @@ pub mod scm {
                 scm_buffer_content_insert_string,
                 2,
             );
+            ctx.define_subr_2(
+                CStr::from_bytes_with_nul(b"--buffer-content-set-string\0").unwrap(),
+                scm_buffer_content_set_string,
+                2,
+            );
             ctx.define_subr_1(
                 CStr::from_bytes_with_nul(b"--buffer-content-pop-char\0").unwrap(),
                 scm_buffer_content_pop_char,
@@ -192,6 +196,17 @@ pub mod scm {
         };
         let string = unsafe { string.to_string() };
         buffer_content.push_chars(string.chars());
+        scm_buffer_content
+    }
+
+    extern "C" fn scm_buffer_content_set_string(scm_buffer_content: Scm, string: Scm) -> Scm {
+        let mut buffer_content = scm_buffer_content;
+        let buffer_content = match unsafe { BufferContent::from_scm_mut(&mut buffer_content) } {
+            Some(b) => b,
+            None => return scm_buffer_content,
+        };
+        let s = unsafe { string.to_string() };
+        *buffer_content = BufferContent::with_str(&s);
         scm_buffer_content
     }
 

@@ -1,5 +1,7 @@
 (define-module (willy event-loop)
-  #:export (run-event-loop next-event-from-terminal list-to-event-pump)
+  #:export (run-event-loop
+            next-event-from-terminal
+            list-to-event-pump)
   #:use-module (srfi srfi-1)
   #:use-module (willy tui)
   #:use-module (willy internal))

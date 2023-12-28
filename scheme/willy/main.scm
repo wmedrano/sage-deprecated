@@ -14,7 +14,7 @@
    #:make-layout make-layout
    #:event-pump next-event-from-terminal
    #:event-handler handle-event!)
-  ;; Just in case run-event-loop somehow exit without calling quit.
+  ;; Just in case run-event-loop somehow exited without calling quit.
   (quit!))
 
 (define main-tui #f)
@@ -30,6 +30,16 @@
   "Register a new buffer."
   (set! buffer-registry (cons buffer buffer-registry))
   buffer)
+
+(define* (remove-buffer-by-name! name)
+  (let ((b (buffer-by-name name)))
+    (if (and b (pair? buffer-registry))
+        (set! buffer-registry
+              (filter (lambda (b) (not (equal? (buffer-name b)
+                                               name)))
+                      buffer-registry)))
+    b))
+
 (define* (buffers)
   "Get a list of all the buffers. Buffers consist of an alist of:
 - 'buffer - The underlying buffer.
@@ -41,7 +51,9 @@
                                               name))
                      (buffers))))
     (or found
-        (if allow-create? (register-buffer! (make-buffer #:name name))))))
+        (if allow-create?
+            (register-buffer! (make-buffer #:name name))
+            #f))))
 (register-buffer!
  (make-buffer #:name "main"
               #:string ";; Welcome to Willy! A Scheme based text environment.\n"))
@@ -50,6 +62,9 @@
               #:string "| Willy | Status: OK |"))
 
 (define* (make-layout #:key width height)
+  (sanitize-layout (make-raw-layout #:width width #:height height)))
+
+(define* (make-raw-layout #:key width height)
   "Define the layout of the ui."
   `(
     ((buffer . ,(buffer-by-name "main"))
@@ -62,6 +77,11 @@
      (y . ,(- height 1))
      (width . ,width)
      (height . 1))))
+
+(define* (sanitize-layout layout)
+  "Define the layout of the ui."
+  (filter (lambda (l) (assoc-ref l 'buffer))
+          layout))
 
 (define (handle-event! event)
   "Handle a single event."
