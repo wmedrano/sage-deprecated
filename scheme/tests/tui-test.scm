@@ -44,8 +44,8 @@
 (test-equal "can render layout"
   (string-concatenate
    '(
-     "  1 example text                                                                \n"
-     "  2   pass: true                                                                \n"
+     "example text                                                                    \n"
+     "  pass: true                                                                    \n"
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
@@ -101,8 +101,8 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
-     "  1 multiline middle                                                            \n"
-     "  2 has line numbers                                                            \n"
+     "multiline string                                                                \n"
+     "has multiple lines                                                              \n"
      "                                                                                \n"
      "                                                                                "))
   (tui-state-for-test
@@ -119,7 +119,7 @@
        (y      . 0)
        (width  . 40)
        (height . 20))
-      ((buffer . ,(make-buffer #:string "multiline middle\nhas line numbers"))
+      ((buffer . ,(make-buffer #:string "multiline string\nhas multiple lines"))
        (x      . 0)
        (y      . 20)
        (width  . 40)

@@ -10,9 +10,12 @@ impl ForeignObjectType for BufferContent {
     const NAME: &'static str = "willy-buffer-content";
 }
 
+/// An empty buffer.
+pub static EMPTY_BUFFER_CONTENT: BufferContent = BufferContent::new();
+
 impl BufferContent {
     /// Create a new blank buffer.
-    pub fn new() -> BufferContent {
+    pub const fn new() -> BufferContent {
         BufferContent { lines: Vec::new() }
     }
 
@@ -26,10 +29,6 @@ impl BufferContent {
     /// Convert the buffer into a string.
     pub fn to_string(&self) -> String {
         self.lines.join("\n")
-    }
-
-    pub fn iter_lines(&self) -> impl Clone + Iterator<Item = &str> {
-        self.lines.iter().map(|s| s.as_str())
     }
 
     /// Add a new character to the buffer.
