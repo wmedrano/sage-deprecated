@@ -275,6 +275,10 @@ pub mod scm {
     unsafe fn scm_widget_to_widget(widget: Scm) -> Layout<'static> {
         let mut ret = BufferWidget {
             buffer: &EMPTY_BUFFER_CONTENT,
+            line_numbers: false,
+            highlight_line: false,
+            cursor: false,
+            border: false,
         };
         let mut area = Rect {
             x: 0,
@@ -298,6 +302,17 @@ pub mod scm {
                 "y" => area.y = value.to_f64() as _,
                 "width" => area.width = value.to_f64() as _,
                 "height" => area.height = value.to_f64() as _,
+                "features" => {
+                    for (feature, feature_value) in value.iter_pairs() {
+                        match feature.to_symbol().as_str() {
+                            "line-numbers" => ret.line_numbers = feature_value.to_bool(),
+                            "highlight-line" => ret.highlight_line = feature_value.to_bool(),
+                            "cursor" => ret.cursor = feature_value.to_bool(),
+                            "border" => ret.border = feature_value.to_bool(),
+                            _ => (),
+                        }
+                    }
+                }
                 _ => (),
             }
         }
@@ -313,7 +328,7 @@ pub mod scm {
                     None => return Scm::EOL,
                 };
                 let widgets = widgets.iter().map(|scm| scm_widget_to_widget(scm));
-                without_guile(|| tui.draw(widgets))
+                tui.draw(widgets)
             }
             .scm_unwrap();
             Scm::EOL

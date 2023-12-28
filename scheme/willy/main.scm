@@ -17,7 +17,11 @@
   ;; Just in case run-event-loop somehow exited without calling quit.
   (quit!))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TUI
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define main-tui #f)
+
 (define* (quit!)
   "Exit/quit out of Willy."
   (if main-tui
@@ -25,7 +29,16 @@
         (delete-tui main-tui)
         (set! main-tui #f))))
 
-(define buffer-registry '())
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Buffers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define buffer-registry
+  (list
+   (make-buffer #:name "main"
+                #:string ";; Welcome to Willy! A Scheme based text environment.\n")
+   (make-buffer #:name "*status*"
+                #:string "Willy | Status: OK")))
+
 (define* (register-buffer! buffer)
   "Register a new buffer."
   (set! buffer-registry (cons buffer buffer-registry))
@@ -54,35 +67,31 @@
         (if allow-create?
             (register-buffer! (make-buffer #:name name))
             #f))))
-(register-buffer!
- (make-buffer #:name "main"
-              #:string ";; Welcome to Willy! A Scheme based text environment.\n"))
-(register-buffer!
- (make-buffer #:name "*status*"
-              #:string "| Willy | Status: OK |"))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Layout
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (make-layout #:key width height)
-  (sanitize-layout (make-raw-layout #:width width #:height height)))
-
-(define* (make-raw-layout #:key width height)
   "Define the layout of the ui."
   `(
-    ((buffer . ,(buffer-by-name "main"))
-     (x . 0)
-     (y . 0)
-     (width . ,width)
-     (height . ,height))
-    ((buffer . ,(buffer-by-name "*status*"))
-     (x . 0)
-     (y . ,(- height 1))
-     (width . ,width)
-     (height . 1))))
+    ((buffer   . ,(buffer-by-name "main"))
+     (features . ((line-numbers   . #t)
+                  (highlight-line . #t)
+                  (cursor         . #t)))
+     (x        . 0)
+     (y        . 0)
+     (width    . ,width)
+     (height   . ,height))
+    ((buffer   . ,(buffer-by-name "*status*"))
+     (features . ((border . #t)))
+     (x        . 0)
+     (y        . ,(- height 3))
+     (width    . ,width)
+     (height   . 3))))
 
-(define* (sanitize-layout layout)
-  "Define the layout of the ui."
-  (filter (lambda (l) (assoc-ref l 'buffer))
-          layout))
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Events
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (handle-event! event)
   "Handle a single event."
   (let ((key    (assoc-ref event 'key))
