@@ -1,5 +1,5 @@
 (use-modules (srfi srfi-64)
-	     (willy buffer))
+	     (willy core buffer))
 
 (define %test-suite-name "buffer")
 (test-begin %test-suite-name)

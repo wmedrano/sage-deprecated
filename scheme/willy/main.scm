@@ -1,8 +1,8 @@
 (define-module (willy main)
   #:export (run-willy!)
-  #:use-module (willy buffer)
-  #:use-module (willy tui)
-  #:use-module (willy event-loop)
+  #:use-module (willy core buffer)
+  #:use-module (willy core tui)
+  #:use-module (willy core event-loop)
   #:use-module (srfi srfi-1))
 
 (define* (run-willy!)

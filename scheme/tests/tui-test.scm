@@ -1,6 +1,6 @@
 (use-modules (srfi srfi-64)
-	     (willy tui)
-	     (willy buffer))
+	     (willy core tui)
+	     (willy core buffer))
 
 (define %test-suite-name "tui")
 (test-begin %test-suite-name)

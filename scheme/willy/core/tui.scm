@@ -1,4 +1,4 @@
-(define-module (willy tui)
+(define-module (willy core tui)
   #:export (
             backspace-key
             delete-tui
@@ -11,7 +11,7 @@
             tui-size
             tui-state-for-test
            )
-  #:use-module (willy internal))
+  #:use-module (willy core internal))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Stateful

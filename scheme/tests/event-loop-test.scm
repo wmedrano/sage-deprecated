@@ -1,6 +1,6 @@
 (use-modules (srfi srfi-64)
-	     (willy event-loop)
-	     (willy tui))
+	     (willy core event-loop)
+	     (willy core tui))
 
 (define %test-suite-name "event-loop")
 (test-begin %test-suite-name)

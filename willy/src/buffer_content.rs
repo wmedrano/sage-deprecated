@@ -137,7 +137,7 @@ pub mod scm {
     use super::BufferContent;
 
     #[no_mangle]
-    pub unsafe extern "C" fn scm_init_willy_internal_buffer_content() {
+    pub unsafe extern "C" fn scm_init_willy_core_internal_buffer_content() {
         BufferContentModule.init();
     }
 
@@ -145,7 +145,7 @@ pub mod scm {
 
     impl Module for BufferContentModule {
         fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy internal\0").unwrap()
+            CStr::from_bytes_with_nul(b"willy core internal\0").unwrap()
         }
 
         unsafe fn define(&self, ctx: &mut ModuleInitContext) {

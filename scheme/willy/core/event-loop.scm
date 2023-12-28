@@ -1,10 +1,10 @@
-(define-module (willy event-loop)
+(define-module (willy core event-loop)
   #:export (run-event-loop
             next-event-from-terminal
             list-to-event-pump)
   #:use-module (srfi srfi-1)
-  #:use-module (willy tui)
-  #:use-module (willy internal))
+  #:use-module (willy core tui)
+  #:use-module (willy core internal))
 
 (define* (run-event-loop #:key
 			 (tui           (make-tui 'test))

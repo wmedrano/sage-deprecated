@@ -1,4 +1,4 @@
-(define-module (willy buffer)
+(define-module (willy core buffer)
   #:export (
 	    buffer-insert-string
 	    buffer-pop-char
@@ -11,7 +11,7 @@
             register-buffer!
             remove-buffer-by-name!
             )
-  #:use-module (willy internal)
+  #:use-module (willy core internal)
   #:use-module (srfi srfi-1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

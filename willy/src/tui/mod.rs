@@ -169,7 +169,7 @@ pub mod scm {
     /// # Safety
     /// Calls unsafe code.
     #[no_mangle]
-    pub unsafe extern "C" fn scm_init_willy_internal_tui_module() {
+    pub unsafe extern "C" fn scm_init_willy_core_internal_tui_module() {
         catch_unwind(|| {
             TuiModule.init();
         })
@@ -181,7 +181,7 @@ pub mod scm {
 
     impl Module for TuiModule {
         fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy internal\0").unwrap()
+            CStr::from_bytes_with_nul(b"willy core internal\0").unwrap()
         }
 
         unsafe fn define(&self, ctx: &mut flashkick::module::ModuleInitContext) {
