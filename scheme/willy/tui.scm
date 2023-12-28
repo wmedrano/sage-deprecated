@@ -1,7 +1,42 @@
 (define-module (willy tui)
-  #:export (backspace-key make-tui delete-tui tui-draw tui-size tui-state-for-test)
+  #:export (
+            backspace-key
+            delete-tui
+            main-tui
+            make-tui
+            quit-tui!
+            start-tui!
+            tui-draw
+            tui-is-active?
+            tui-size
+            tui-state-for-test
+           )
   #:use-module (willy internal))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Stateful
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define main-tui #f)
+
+(define* (tui-is-active?)
+  main-tui)
+
+(define* (start-tui! tui)
+  "Start a new tui."
+  (quit-tui!)
+  (set! main-tui tui)
+  main-tui)
+
+(define* (quit-tui!)
+  "Exit/quit out of Willy."
+  (if main-tui
+      (begin
+        (delete-tui main-tui)
+        (set! main-tui #f))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* backspace-key "<backspace>")
 
 (define* (make-tui #:optional backend-type)

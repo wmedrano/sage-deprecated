@@ -1,12 +1,65 @@
 (define-module (willy buffer)
-  #:export (make-buffer
-            buffer-to-string
-	    buffer-pop-char
+  #:export (
 	    buffer-insert-string
+	    buffer-pop-char
 	    buffer-set-string
-            buffer-name)
-  #:use-module (willy internal))
+            buffer-by-name
+            buffer-name
+            buffer-to-string
+            buffers
+            make-buffer
+            register-buffer!
+            remove-buffer-by-name!
+            )
+  #:use-module (willy internal)
+  #:use-module (srfi srfi-1))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Stateful
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define buffer-registry
+  (list
+   (make-buffer #:name "main"
+                #:string ";; Welcome to Willy! A Scheme based text environment.\n")
+   (make-buffer #:name "*status*"
+                #:string "Willy | Status: OK")))
+
+(define* (register-buffer! buffer)
+  "Register a new buffer."
+  (set! buffer-registry (cons buffer buffer-registry))
+  buffer)
+
+(define* (remove-buffer-by-name! name)
+  (let ((b (buffer-by-name name)))
+    (if (and b (pair? buffer-registry))
+        (set! buffer-registry
+              (filter (lambda (b) (not (equal? (buffer-name b)
+                                               name)))
+                      buffer-registry)))
+    b))
+
+(define* (buffers)
+  "Get a list of all the buffers. Buffers consist of an alist of:
+- 'buffer - The underlying buffer.
+- 'name   - The name of the buffer."
+  buffer-registry)
+
+(define* (buffer-by-name name #:key (allow-create? #f))
+  "Get a buffer by its name.
+
+If the buffer does not exist and allow-create? is #t, then a new
+buffer will be created and returned."
+  (let ((found (find (lambda (buffer) (equal? (buffer-name buffer)
+                                              name))
+                     (buffers))))
+    (or found
+        (if allow-create?
+            (register-buffer! (make-buffer #:name name))
+            #f))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (make-buffer #:key
                       (name   "*default*")
                       (string ""))

@@ -110,11 +110,15 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
         }) => {
             let mut tmp_ch_buffer = [0u8; 4];
             let key = match code {
+                event::KeyCode::Char(ch) => ch.encode_utf8(&mut tmp_ch_buffer),
                 event::KeyCode::Enter => '\n'.encode_utf8(&mut tmp_ch_buffer),
                 event::KeyCode::Tab => '\t'.encode_utf8(&mut tmp_ch_buffer),
                 event::KeyCode::Backspace => "<backspace>",
+                event::KeyCode::Down => "<down>",
                 event::KeyCode::Esc => "<esc>",
-                event::KeyCode::Char(ch) => ch.encode_utf8(&mut tmp_ch_buffer),
+                event::KeyCode::Left => "<left>",
+                event::KeyCode::Right => "<right>",
+                event::KeyCode::Up => "<up>",
                 _ => return None,
             };
             let event_type = match kind {
@@ -152,7 +156,7 @@ pub mod scm {
         err::{throw_error, ResultToScm},
         foreign_object::ForeignObjectType,
         module::Module,
-        without_guile, Scm,
+        Scm,
     };
     use ratatui::prelude::Rect;
 

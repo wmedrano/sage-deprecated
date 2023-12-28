@@ -4,8 +4,11 @@
 	    --buffer-content-pop-char
 	    --buffer-content-set-string
 	    --buffer-content-to-string
-	    --delete-tui --tui-draw --tui-size --tui-state-for-test
+	    --delete-tui
 	    --make-buffer-content
 	    --make-tui
 	    --next-event-from-terminal
+            --tui-draw
+            --tui-size
+            --tui-state-for-test
 	    ))
