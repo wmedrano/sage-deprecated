@@ -1,9 +1,10 @@
 (define-module (willy main)
   #:export (run-willy!)
   #:use-module (willy core buffer)
-  #:use-module (willy core tui)
   #:use-module (willy core event-loop)
+  #:use-module (willy core tui)
   #:use-module (srfi srfi-1))
+(use-modules ((willy core window) #:prefix window:))
 
 (define* (run-willy!)
   "Run the Willy text editor."
@@ -78,21 +79,21 @@ buffer will be created and returned."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (make-layout #:key width height)
   "Define the layout of the ui."
-  `(
-    ((buffer   . ,(buffer-by-name "main"))
-     (features . ((line-numbers   . #t)
-                  (highlight-line . #t)
-                  (cursor         . #t)))
-     (x        . 0)
-     (y        . 0)
-     (width    . ,width)
-     (height   . ,height))
-    ((buffer   . ,(buffer-by-name "*status*"))
-     (features . ((border . #t)))
-     (x        . 0)
-     (y        . ,(- height 3))
-     (width    . ,width)
-     (height   . 3))))
+  (list
+   (window:make-window #:buffer   (buffer-by-name "main")
+                       #:features '((line-numbers   . #t)
+                                    (highlight-line . #t)
+                                    (cursor         . #t))
+                       #:x        0
+                       #:y        0
+                       #:width    width
+                       #:height   height)
+   (window:make-window #:buffer   (buffer-by-name "*status*")
+                       #:features '((border . #t))
+                       #:x        0
+                       #:y        (- height 3)
+                       #:width    width
+                       #:height   3)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Events
