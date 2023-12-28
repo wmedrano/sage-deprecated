@@ -1,10 +1,14 @@
 (define-module (willy core event-loop)
-  #:export (run-event-loop
+  #:export (
+            backspace-key
+            run-event-loop
             next-event-from-terminal
             list-to-event-pump)
   #:use-module (srfi srfi-1)
   #:use-module (willy core tui)
   #:use-module (willy core internal))
+
+(define* backspace-key "<backspace>")
 
 (define* (run-event-loop #:key
 			 (tui           (make-tui 'test))

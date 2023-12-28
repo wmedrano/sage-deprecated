@@ -10,7 +10,7 @@
 
 (test-equal "tui test size is fixed value"
   '((width . 80) (height . 24))
-  (tui-size (make-tui 'test)))
+  (tui-size (make-tui)))
 
 (test-equal "make-tui is ok"
   (string-concatenate
@@ -39,7 +39,7 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                "))
-  (tui-state-for-test (make-tui 'test)))
+  (tui-state-for-test (make-tui)))
 
 (test-equal "can render window"
   (string-concatenate
@@ -70,7 +70,7 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `((
        (buffer . ,(make-buffer #:string "example text\n  pass: true "))
        (x      . 0)
@@ -107,7 +107,7 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `(
       ((buffer . ,(make-buffer #:string "top left"))
        (x      . 0)
@@ -155,7 +155,7 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `(
       ((buffer . ,(make-buffer #:string "partial out of range in x"))
        (x      . 40)
@@ -213,7 +213,7 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `(
       ((buffer . ,(make-buffer #:string "1111111111"))
        (x      . 0)

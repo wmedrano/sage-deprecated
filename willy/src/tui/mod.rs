@@ -24,7 +24,7 @@ impl ForeignObjectType for Tui {
 
 #[derive(Copy, Clone)]
 pub enum BackendType {
-    Default,
+    Terminal,
     Test,
 }
 
@@ -233,11 +233,11 @@ pub mod scm {
     extern "C" fn scm_make_tui(backend_type: Scm) -> Scm {
         catch_unwind(|| {
             let backend_type = match unsafe { backend_type.to_symbol().as_str() } {
-                "default" => BackendType::Default,
+                "terminal" => BackendType::Terminal,
                 "test" => BackendType::Test,
                 t => unsafe {
                     throw_error(anyhow!(
-                        "unknown backend type {t}, valid values are 'default and 'dummy"
+                        "unknown backend type {t}, valid values are 'terminal and 'test"
                     ))
                 },
             };

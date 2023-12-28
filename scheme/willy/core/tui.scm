@@ -1,11 +1,8 @@
 (define-module (willy core tui)
   #:export (
-            backspace-key
             delete-tui
             main-tui
             make-tui
-            quit-tui!
-            start-tui!
             tui-draw
             tui-is-active?
             tui-size
@@ -13,36 +10,12 @@
            )
   #:use-module (willy core internal))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Stateful
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define main-tui #f)
-
-(define* (tui-is-active?)
-  main-tui)
-
-(define* (start-tui! tui)
-  "Start a new tui."
-  (quit-tui!)
-  (set! main-tui tui)
-  main-tui)
-
-(define* (quit-tui!)
-  "Exit/quit out of Willy."
-  (if main-tui
-      (begin
-        (delete-tui main-tui)
-        (set! main-tui #f))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Utilities
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define* backspace-key "<backspace>")
 
 (define* (make-tui #:optional backend-type)
   "Create a new terminal UI.
-backend-type must be either 'default or 'test."
-  (--make-tui (or backend-type 'default)))
+backend-type must be either 'terminal or 'test. If not set, then 'test
+will be used."
+  (--make-tui (or backend-type 'test)))
 
 (define* (delete-tui tui)
   "Delete a terminal UI."
@@ -71,5 +44,6 @@ Example return value: '((width . 80) (height . 24))"
 (define* (tui-state-for-test tui)
   "Get the state (as a string) for the test tui.
 
-The tui must have been constructed with (make-tui 'test)"
+The tui must have been constructed with the 'test backend like:
+(make-tui 'test)"
   (--tui-state-for-test tui))
