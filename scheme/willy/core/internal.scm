@@ -12,3 +12,5 @@
             --tui-size
             --tui-state-for-test
             ))
+
+(load-extension "target/debug/libwilly.so" "scm_init_willy_core_internal_module")

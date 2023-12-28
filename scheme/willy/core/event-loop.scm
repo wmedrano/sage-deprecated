@@ -3,15 +3,16 @@
             backspace-key
             run-event-loop
             next-event-from-terminal
-            list-to-event-pump)
-  #:use-module (srfi srfi-1)
-  #:use-module (willy core tui)
-  #:use-module (willy core internal))
+            list-to-event-pump))
+(use-modules
+ ((willy core tui)      #:prefix tui:)
+ ((willy core internal) #:prefix internal:)
+ ((srfi srfi-1)))
 
 (define* backspace-key "<backspace>")
 
 (define* (run-event-loop #:key
-			 (tui           (make-tui 'test))
+			 (tui           (tui:make-tui 'test))
 			 (should-run-p  (lambda () #f))
 			 (make-layout    empty-layout)
 			 (event-pump     (lambda () #f))
@@ -24,14 +25,15 @@ event-pump - A function that returns the next event or #f if there are none.
 event-handler - A function that handles a single event returned by event-pump."
   (while (should-run-p)
     (handle-all-events event-pump event-handler)
-    (tui-draw tui
-	      (let ((size (tui-size tui)))
-		(make-layout #:width (assoc-ref size 'width)
-			     #:height (assoc-ref size 'height))))))
+    (tui:tui-draw
+     tui
+     (let ((size (tui:tui-size tui)))
+       (make-layout #:width (assoc-ref size 'width)
+                    #:height (assoc-ref size 'height))))))
 
 (define* (next-event-from-terminal)
   "Get the next terminal event."
-  (--next-event-from-terminal))
+  (internal:--next-event-from-terminal))
 
 (define* (list-to-event-pump events)
   "Convert a list of events into an event pump."
@@ -46,7 +48,6 @@ event-handler - A function that handles a single event returned by event-pump."
 		  (set! next (cdr next)))
 		(set! curr #f))))
       curr)))
-
 
 (define* (handle-all-events event-pump event-handler)
   "Handle all events returned by event-pump."

@@ -1,8 +1,9 @@
 #!/bin/guile -s
 !#
-(use-modules (willy main))
+(define-module main)
+(use-modules ((willy main) #:prefix willy))
 
 (define (main)
-  (run-willy!))
+  (willy:run!))
 
 (main)

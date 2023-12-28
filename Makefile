@@ -1,14 +1,6 @@
 # Run Willy.
 run:
-	cargo run -- main.scm
-
-# Run Willy in release mode.
-run-release:
-	cargo run --release -- main.scm
-
-# Run Willy starting in the Guile Scheme shell.
-run-shell:
-	cargo run
+	guile main.scm
 
 # Build Willy.
 build:
@@ -18,7 +10,7 @@ build:
 build-rust:
 	cargo build
 
-build-scheme:
+build-scheme: target/debug/libwilly.so
 	find scheme/ -type f -name "*.scm" -exec guild compile {} \;
 
 # Run all Willy tests.
@@ -37,4 +29,4 @@ test-rustdoc:
 
 # Run Scheme tests.
 test-scheme:
-	find scheme/tests -type f -name "*.scm" -exec cargo run -- {} \;
+	find scheme/tests -type f -name "*.scm" -exec guile {} \;

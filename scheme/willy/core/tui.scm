@@ -7,19 +7,19 @@
             tui-is-active?
             tui-size
             tui-state-for-test
-           )
-  #:use-module (willy core internal))
+           ))
+(use-modules ((willy core internal) #:prefix internal:))
 
 
 (define* (make-tui #:optional backend-type)
   "Create a new terminal UI.
 backend-type must be either 'terminal or 'test. If not set, then 'test
 will be used."
-  (--make-tui (or backend-type 'test)))
+  (internal:--make-tui (or backend-type 'test)))
 
 (define* (delete-tui tui)
   "Delete a terminal UI."
-  (--delete-tui tui))
+  (internal:--delete-tui tui))
 
 (define* (tui-draw tui windows)
   "Draw a new screen for the given tui containing the given windows.
@@ -32,18 +32,18 @@ alist with the following keys:
 - width - The width of the layout.
 - height - The height of the layout.
 - features - An alist to add special features such as borders and line numbers."
-  (--tui-draw tui windows)
+  (internal:--tui-draw tui windows)
   tui)
 
 (define* (tui-size tui)
   "Get the size of the terminal.
 
 Example return value: '((width . 80) (height . 24))"
-  (--tui-size tui))
+  (internal:--tui-size tui))
 
 (define* (tui-state-for-test tui)
   "Get the state (as a string) for the test tui.
 
 The tui must have been constructed with the 'test backend like:
 (make-tui 'test)"
-  (--tui-state-for-test tui))
+  (internal:--tui-state-for-test tui))

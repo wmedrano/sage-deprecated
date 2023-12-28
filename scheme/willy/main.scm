@@ -1,19 +1,22 @@
 (define-module (willy main)
-  #:export (run-willy!)
-  #:use-module (willy core buffer)
-  #:use-module (willy core event-loop)
-  #:use-module (willy core tui)
-  #:use-module (srfi srfi-1))
-(use-modules ((willy core window) #:prefix window:))
+  #:export (run!))
+(use-modules
+ ((willy core buffer)     #:prefix buffer:)
+ ((willy core event-loop) #:prefix event-loop:)
+ ((willy core log)        #:prefix log:)
+ ((willy core tui)        #:prefix tui:)
+ ((willy core window)     #:prefix window:)
+ ((srfi srfi-1)))
 
-(define* (run-willy!)
+(define* (run!)
   "Run the Willy text editor."
-  (set! main-tui (make-tui 'terminal))
-  (run-event-loop
+  (set! main-tui (tui:make-tui 'terminal))
+  (log:log! "Starting Willy!")
+  (event-loop:run-event-loop
    #:tui main-tui
    #:should-run-p (lambda () main-tui)
    #:make-layout make-layout
-   #:event-pump next-event-from-terminal
+   #:event-pump event-loop:next-event-from-terminal
    #:event-handler handle-event!)
   ;; Just in case quit was not called and we need to clean up.
   (quit-tui!))
@@ -27,7 +30,7 @@
   "Exit/quit out of Willy."
   (if main-tui
       (begin
-        (delete-tui main-tui)
+        (tui:delete-tui main-tui)
         (set! main-tui #f))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,10 +38,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define buffer-registry
   (list
-   (make-buffer #:name "main"
-                #:string ";; Welcome to Willy! A Scheme based text environment.\n")
-   (make-buffer #:name "*status*"
-                #:string "Willy | Status: OK")))
+   (log:log-buffer)
+   (buffer:make-buffer
+    #:name "main"
+    #:string ";; Welcome to Willy! A Scheme based text environment.\n")
+   (buffer:make-buffer
+    #:name "*status*"
+    #:string "Willy | Status: OK")))
 
 (define* (register-buffer! buffer)
   "Register a new buffer."
@@ -49,7 +55,7 @@
   (let ((b (buffer-by-name name)))
     (if (and b (pair? buffer-registry))
         (set! buffer-registry
-              (filter (lambda (b) (not (equal? (buffer-name b)
+              (filter (lambda (b) (not (equal? (buffer:buffer-name b)
                                                name)))
                       buffer-registry)))
     b))
@@ -65,12 +71,12 @@
 
 If the buffer does not exist and allow-create? is #t, then a new
 buffer will be created and returned."
-  (let ((found (find (lambda (buffer) (equal? (buffer-name buffer)
+  (let ((found (find (lambda (buffer) (equal? (buffer:buffer-name buffer)
                                               name))
                      (buffers))))
     (or found
         (if allow-create?
-            (register-buffer! (make-buffer #:name name))
+            (register-buffer! (buffer:make-buffer #:name name))
             #f))))
 
 
@@ -86,7 +92,13 @@ buffer will be created and returned."
                                     (cursor         . #t))
                        #:x        0
                        #:y        0
-                       #:width    width
+                       #:width    (/ width 2)
+                       #:height   height)
+   (window:make-window #:buffer   (log:log-buffer)
+                       #:features '((line-numbers   . #t))
+                       #:x        (/ width 2)
+                       #:y        0
+                       #:width    (/ width 2)
                        #:height   height)
    (window:make-window #:buffer   (buffer-by-name "*status*")
                        #:features '((border . #t))
@@ -102,11 +114,13 @@ buffer will be created and returned."
   "Handle a single event."
   (let ((key    (assoc-ref event 'key))
     (ctrl?  (assoc-ref event 'ctrl?))
+    (alt?   (assoc-ref event 'alt?))
     (press? (equal? (assoc-ref event 'event-type) 'press)))
     (cond
-     ((and ctrl? (equal? key "c"))
+     ((and ctrl? (not alt?) (equal? key "c"))
       (quit-tui!))
-     ((and press? (equal? key backspace-key))
-      (buffer-pop-char (buffer-by-name "main")))
-     ((and press? key (not ctrl?))
-      (buffer-insert-string (buffer-by-name "main") key)))))
+     ((and press? (equal? key event-loop:backspace-key) (not ctrl?) (not alt?))
+      (buffer:buffer-pop-char (buffer-by-name "main")))
+     ((and press? key (not ctrl?) (not alt?))
+      (buffer:buffer-insert-string (buffer-by-name "main") key))
+     (else (log:log! "Unhandled event " (object->string event))))))
