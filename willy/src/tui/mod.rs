@@ -62,11 +62,11 @@ impl Tui {
         self.terminal.draw(|frame: &mut Frame| {
             let window_area = frame.size();
             frame.render_widget(Block::default().bg(ONEDARK_THEME.black1), window_area);
-            let should_render_widget = |w: &Window| {
-                w.area.width > 0 && w.area.height > 0 && window_area.intersection(w.area) == w.area
-            };
-            for widget in widgets.filter(should_render_widget) {
-                frame.render_widget(widget.widget, widget.area);
+            for widget in widgets {
+                let area = window_area.intersection(widget.area);
+                if area.width > 0 && area.height > 0 {
+                    frame.render_widget(widget.widget, area);
+                }
             }
         })?;
         Ok(())

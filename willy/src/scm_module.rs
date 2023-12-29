@@ -324,26 +324,42 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
             };
             let event_type = match kind {
                 event::KeyEventKind::Press => cache().symbols.press,
+                // Consider keeping only press as release and repeat events are not being provided
+                // by crossterm at the moment.
                 event::KeyEventKind::Release => cache().symbols.release,
-                event::KeyEventKind::Repeat => return None,
+                event::KeyEventKind::Repeat => cache().symbols.repeat,
             };
-            let alist = Scm::with_alist([
+            let alist = [
                 (cache().symbols.event_type, event_type),
                 (cache().symbols.key, Scm::new_string(key)),
-                (
-                    cache().symbols.shift_question,
-                    Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
-                ),
-                (
-                    cache().symbols.ctrl_question,
-                    Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
-                ),
-                (
-                    cache().symbols.ctrl_question,
-                    Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
-                ),
-            ]);
-            Some(alist)
+                if modifiers.contains(event::KeyModifiers::SHIFT) {
+                    (
+                        cache().symbols.shift_question,
+                        Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
+                    )
+                } else {
+                    (Scm::UNDEFINED, Scm::UNDEFINED)
+                },
+                if modifiers.contains(event::KeyModifiers::CONTROL) {
+                    (
+                        cache().symbols.ctrl_question,
+                        Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
+                    )
+                } else {
+                    (Scm::UNDEFINED, Scm::UNDEFINED)
+                },
+                if modifiers.contains(event::KeyModifiers::ALT) {
+                    (
+                        cache().symbols.alt_question,
+                        Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
+                    )
+                } else {
+                    (Scm::UNDEFINED, Scm::UNDEFINED)
+                },
+            ]
+            .into_iter()
+            .filter(|(k, _)| !k.is_undefined());
+            Some(Scm::with_alist(alist))
         }
         _ => None,
     }

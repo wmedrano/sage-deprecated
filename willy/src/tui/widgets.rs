@@ -55,17 +55,17 @@ impl<'a> Widget for BufferWidget<'a> {
                     area.width as usize,
                     Style::new().fg(ONEDARK_THEME.white1),
                 );
-                area.x += 4;
-                area.width -= 4;
+                area = advance_rect(area, 4, 0);
             }
-            // Text: TODO, also set the width.
-            (area.x, area.y) = buf.set_stringn(
+            let (new_x, new_y) = buf.set_stringn(
                 area.x,
                 area.y,
                 line,
                 area.width as usize,
                 Style::new().fg(ONEDARK_THEME.white3),
             );
+            area = advance_rect(area, new_x - area.x, new_y - area.y);
+            // Cursor
             if self.cursor && selected_line == idx + 1 {
                 cursor_pos = Some((area.x, area.y));
             }
@@ -86,5 +86,14 @@ impl<'a> Widget for BufferWidget<'a> {
                 buf.set_stringn(x, y, " ", 1, Style::new().bg(ONEDARK_THEME.white3));
             }
         }
+    }
+}
+
+fn advance_rect(rect: Rect, delta_x: u16, delta_y: u16) -> Rect {
+    Rect {
+        x: rect.x + delta_x,
+        y: rect.y + delta_y,
+        width: rect.width.saturating_sub(delta_x),
+        height: rect.height.saturating_sub(delta_y),
     }
 }
