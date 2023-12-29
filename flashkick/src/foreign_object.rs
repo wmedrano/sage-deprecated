@@ -42,6 +42,27 @@ pub trait ForeignObjectType: 'static + Sized {
         ptr.cast()
     }
 
+<<<<<<< HEAD
+=======
+    /// Get a reference of the underlying object.
+    ///
+    /// # Safety
+    /// Calls C code.
+    unsafe fn from_scm(obj: &Scm) -> Option<&Self> {
+        let ptr: *mut Self = Self::ptr_from_scm(*obj);
+        ptr.as_ref()
+    }
+
+    /// Get a mutable reference of the underlying object.
+    ///
+    /// # Safety
+    /// Calls C code.
+    unsafe fn from_scm_mut(obj: &mut Scm) -> Option<&mut Self> {
+        let ptr = Self::ptr_from_scm(*obj);
+        ptr.as_mut()
+    }
+
+>>>>>>> main
     /// Drop the Scheme object.
     ///
     /// # Safety

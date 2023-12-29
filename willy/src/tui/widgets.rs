@@ -9,11 +9,25 @@ use crate::buffer_content::BufferContent;
 use super::theme::ONEDARK_THEME;
 
 pub struct BufferWidget<'a> {
+<<<<<<< HEAD
     pub buffer: &'a BufferContent,
     pub line_numbers: bool,
     pub highlight_line: bool,
     pub cursor: bool,
     pub border: bool,
+=======
+    buffer: &'a BufferContent,
+    render_line_numbers: bool,
+}
+
+impl<'a> BufferWidget<'a> {
+    pub fn new(buffer: &'a BufferContent, render_line_numbers: bool) -> BufferWidget<'a> {
+        BufferWidget {
+            buffer,
+            render_line_numbers,
+        }
+    }
+>>>>>>> main
 }
 
 impl<'a> Widget for BufferWidget<'a> {

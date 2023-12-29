@@ -5,11 +5,18 @@ use crossterm::event;
 use flashkick::foreign_object::ForeignObjectType;
 use ratatui::{prelude::Rect, style::Stylize, widgets::Block, Frame, Terminal};
 
+<<<<<<< HEAD
+=======
+use crate::buffer_content::BufferContent;
+
+>>>>>>> main
 use self::{terminal_backends::TerminalBackend, theme::ONEDARK_THEME, widgets::BufferWidget};
 
 pub mod terminal_backends;
 pub mod theme;
 pub mod widgets;
+
+const TARGET_FPS: u64 = 60;
 
 const TARGET_FPS: u64 = 60;
 
@@ -64,7 +71,11 @@ impl Tui {
     }
 
     /// Draw the widgets at the screen. Calls to draw are throttled to a reasonable fps.
+<<<<<<< HEAD
     pub fn draw<'a>(&mut self, widgets: impl Iterator<Item = Window<'a>>) -> Result<()> {
+=======
+    pub fn draw<'a>(&mut self, widgets: impl Iterator<Item = Widget<'a>>) -> Result<()> {
+>>>>>>> main
         self.terminal.draw(|frame: &mut Frame| {
             let window_area = frame.size();
             frame.render_widget(Block::default().bg(ONEDARK_THEME.black1), window_area);
@@ -87,7 +98,11 @@ impl Tui {
 /// TODO: Remove indirection and use the real widgets directly.
 pub struct Window<'a> {
     pub area: Rect,
+<<<<<<< HEAD
     pub widget: BufferWidget<'a>,
+=======
+    pub buffer: &'a BufferContent,
+>>>>>>> main
 }
 
 pub fn next_event() -> Option<event::Event> {
@@ -99,3 +114,233 @@ pub fn next_event() -> Option<event::Event> {
     let e = crossterm::event::read().expect("could not read next event in event loop");
     Some(e)
 }
+<<<<<<< HEAD
+=======
+
+unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
+    match e {
+        event::Event::Key(event::KeyEvent {
+            code,
+            kind,
+            modifiers,
+            ..
+        }) => {
+            let mut tmp_ch_buffer = [0u8; 4];
+            let key = match code {
+                event::KeyCode::Enter => '\n'.encode_utf8(&mut tmp_ch_buffer),
+                event::KeyCode::Tab => '\t'.encode_utf8(&mut tmp_ch_buffer),
+                event::KeyCode::Backspace => "<backspace>",
+                event::KeyCode::Char(ch) => ch.encode_utf8(&mut tmp_ch_buffer),
+                _ => return None,
+            };
+            let event_type = match kind {
+                event::KeyEventKind::Press => Scm::new_symbol("press"),
+                event::KeyEventKind::Release => Scm::new_symbol("release"),
+                event::KeyEventKind::Repeat => return None,
+            };
+            let alist = Scm::with_alist([
+                (Scm::new_symbol("event-type"), event_type),
+                (Scm::new_symbol("key"), Scm::new_string(key)),
+                (
+                    Scm::new_symbol("shift?"),
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
+                ),
+                (
+                    Scm::new_symbol("ctrl?"),
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
+                ),
+                (
+                    Scm::new_symbol("alt?"),
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
+                ),
+            ]);
+            Some(alist)
+        }
+        _ => None,
+    }
+}
+
+pub mod scm {
+    use std::{ffi::CStr, panic::catch_unwind};
+
+    use anyhow::anyhow;
+    use flashkick::{
+        err::{throw_error, ResultToScm},
+        foreign_object::ForeignObjectType,
+        module::Module,
+        Scm,
+    };
+    use ratatui::prelude::Rect;
+
+    use crate::buffer_content::BufferContent;
+
+    use super::{event_to_scm, next_event, BackendType, Tui, Widget};
+
+    /// Initialize the `(willy tui)` module.
+    ///
+    /// # Safety
+    /// Calls unsafe code.
+    #[no_mangle]
+    pub unsafe extern "C" fn scm_init_willy_internal_tui_module() {
+        catch_unwind(|| {
+            TuiModule.init();
+        })
+        .map_err(|err| format!("{err:?}"))
+        .scm_unwrap();
+    }
+
+    struct TuiModule;
+
+    impl Module for TuiModule {
+        fn name() -> &'static std::ffi::CStr {
+            CStr::from_bytes_with_nul(b"willy internal\0").unwrap()
+        }
+
+        unsafe fn define(&self, ctx: &mut flashkick::module::ModuleInitContext) {
+            ctx.define_type::<Tui>();
+            ctx.define_subr_0(
+                CStr::from_bytes_with_nul(b"--next-event-from-terminal\0").unwrap(),
+                scm_next_event_from_terminal,
+            );
+            ctx.define_subr_1(
+                CStr::from_bytes_with_nul(b"--make-tui\0").unwrap(),
+                scm_make_tui,
+                1,
+            );
+            ctx.define_subr_1(
+                CStr::from_bytes_with_nul(b"--delete-tui\0").unwrap(),
+                scm_delete_tui,
+                1,
+            );
+            ctx.define_subr_1(
+                CStr::from_bytes_with_nul(b"--tui-size\0").unwrap(),
+                scm_tui_size,
+                1,
+            );
+            ctx.define_subr_2(
+                CStr::from_bytes_with_nul(b"--tui-draw\0").unwrap(),
+                scm_tui_draw,
+                2,
+            );
+            ctx.define_subr_1(
+                CStr::from_bytes_with_nul(b"--tui-state-for-test\0").unwrap(),
+                scm_tui_state_for_test,
+                1,
+            );
+        }
+    }
+
+    pub extern "C" fn scm_next_event_from_terminal() -> Scm {
+        catch_unwind(|| {
+            let e = match next_event() {
+                Some(e) => e,
+                None => return Scm::FALSE,
+            };
+            unsafe { event_to_scm(e) }.unwrap_or(Scm::FALSE)
+        })
+        .map_err(|e| format!("{e:?}"))
+        .scm_unwrap()
+    }
+
+    extern "C" fn scm_make_tui(backend_type: Scm) -> Scm {
+        catch_unwind(|| {
+            let backend_type = match unsafe { backend_type.to_symbol().as_str() } {
+                "default" => BackendType::Default,
+                "test" => BackendType::Test,
+                t => unsafe {
+                    throw_error(anyhow!(
+                        "unknown backend type {t}, valid values are 'default and 'dummy"
+                    ))
+                },
+            };
+            let tui = Box::new(Tui::new(backend_type).scm_unwrap());
+            unsafe { Tui::to_scm(tui) }
+        })
+        .map_err(|e| format!("{e:?}"))
+        .scm_unwrap()
+    }
+
+    extern "C" fn scm_delete_tui(tui: Scm) -> Scm {
+        catch_unwind(|| {
+            unsafe { Tui::scm_drop(tui) };
+            Scm::EOL
+        })
+        .map_err(|e| format!("{e:?}"))
+        .scm_unwrap()
+    }
+
+    extern "C" fn scm_tui_size(tui: Scm) -> Scm {
+        catch_unwind(|| {
+            let make_size = |width, height| unsafe {
+                Scm::with_alist([
+                    (Scm::new_symbol("width"), Scm::new_u16(width)),
+                    (Scm::new_symbol("height"), Scm::new_u16(height)),
+                ])
+            };
+            let tui = match unsafe { Tui::from_scm(&tui) } {
+                Some(t) => t,
+                None => return make_size(0, 0),
+            };
+            let (width, height) = tui.size().scm_unwrap();
+            make_size(width, height)
+        })
+        .map_err(|e| format!("{e:?}"))
+        .scm_unwrap()
+    }
+
+    unsafe fn scm_widget_to_widget(widget: Scm) -> Widget<'static> {
+        let mut buffer_ptr: *const BufferContent = std::ptr::null();
+        let mut area = Rect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        };
+        for (key, value) in widget.iter_pairs() {
+            let key = key.to_symbol();
+            match key.as_str() {
+                "buffer" => buffer_ptr = BufferContent::ptr_from_scm(value),
+                "x" => area.x = value.to_f64() as _,
+                "y" => area.y = value.to_f64() as _,
+                "width" => area.width = value.to_f64() as _,
+                "height" => area.height = value.to_f64() as _,
+                _ => (),
+            }
+        }
+        let buffer = buffer_ptr
+            .as_ref()
+            .ok_or_else(|| anyhow!("'buffer not specified for widget"))
+            .scm_unwrap();
+        Widget { area, buffer }
+    }
+
+    extern "C" fn scm_tui_draw(tui: Scm, widgets: Scm) -> Scm {
+        catch_unwind(|| {
+            let mut tui = tui;
+            let tui = match unsafe { Tui::from_scm_mut(&mut tui) } {
+                Some(t) => t,
+                None => return Scm::EOL,
+            };
+            let widgets = unsafe { widgets.iter().map(|scm| scm_widget_to_widget(scm)) };
+            tui.draw(widgets).scm_unwrap();
+            Scm::EOL
+        })
+        .map_err(|e| format!("{e:?}"))
+        .scm_unwrap()
+    }
+
+    extern "C" fn scm_tui_state_for_test(tui: Scm) -> Scm {
+        catch_unwind(|| {
+            let mut tui = tui;
+            let tui = match unsafe { Tui::from_scm_mut(&mut tui) } {
+                Some(t) => t,
+                None => return unsafe { Scm::new_string("") },
+            };
+            let state = tui.state().scm_unwrap();
+            unsafe { Scm::new_string(&state) }
+        })
+        .map_err(|e| format!("{e:?}"))
+        .scm_unwrap()
+    }
+}
+>>>>>>> main

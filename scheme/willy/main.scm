@@ -1,4 +1,5 @@
 (define-module (willy main)
+<<<<<<< HEAD
   #:export (run!))
 (use-modules
  ((willy core buffer)     #:prefix buffer:)
@@ -46,10 +47,40 @@
     #:name "*status*"
     #:string "Willy | Status: OK")))
 
+=======
+  #:export (run-willy!)
+  #:use-module (willy buffer)
+  #:use-module (willy tui)
+  #:use-module (willy event-loop)
+  #:use-module (srfi srfi-1))
+
+(define* (run-willy!)
+  "Run the Willy text editor."
+  (set! main-tui (make-tui))
+  (run-event-loop
+   #:tui main-tui
+   #:should-run-p (lambda () main-tui)
+   #:make-layout make-layout
+   #:event-pump next-event-from-terminal
+   #:event-handler handle-event!)
+  ;; Just in case run-event-loop somehow exit without calling quit.
+  (quit!))
+
+(define main-tui #f)
+(define* (quit!)
+  "Exit/quit out of Willy."
+  (if main-tui
+      (begin
+        (delete-tui main-tui)
+        (set! main-tui #f))))
+
+(define buffer-registry '())
+>>>>>>> main
 (define* (register-buffer! buffer)
   "Register a new buffer."
   (set! buffer-registry (cons buffer buffer-registry))
   buffer)
+<<<<<<< HEAD
 
 (define* (remove-buffer-by-name! name)
   (let ((b (buffer-by-name name)))
@@ -60,11 +91,14 @@
                       buffer-registry)))
     b))
 
+=======
+>>>>>>> main
 (define* (buffers)
   "Get a list of all the buffers. Buffers consist of an alist of:
 - 'buffer - The underlying buffer.
 - 'name   - The name of the buffer."
   buffer-registry)
+<<<<<<< HEAD
 
 (define* (buffer-by-name name #:key (allow-create? #f))
   "Get a buffer by its name.
@@ -124,3 +158,47 @@ buffer will be created and returned."
      ((and press? key (not ctrl?) (not alt?))
       (buffer:buffer-insert-string (buffer-by-name "main") key))
      (else (log:log! "Unhandled event " (object->string event))))))
+=======
+(define* (buffer-by-name name)
+  "Get a buffer by its name."
+  (let ((found (find (lambda (buffer) (equal? (assoc-ref buffer 'name)
+					      name))
+		     (buffers))))
+    (if found
+	found
+	(register-buffer! `((buffer . ,(make-buffer-content))
+			    (name . ,name))))))
+(register-buffer!
+ `((name   . "main")
+   (buffer . ,(make-buffer-content ";; Welcome to Willy! A Scheme based text environment.\n"))))
+(register-buffer!
+ `((name   . "*status*")
+   (buffer . ,(make-buffer-content "| Willy | Status: OK |"))))
+
+(define* (make-layout #:key width height)
+  "Define the layout of the ui."
+  `(
+    ((buffer . ,(assoc-ref (buffer-by-name "main") 'buffer))
+     (x . 0)
+     (y . 0)
+     (width . ,width)
+     (height . ,height))
+    ((buffer . ,(assoc-ref (buffer-by-name "*status*") 'buffer))
+     (x . 0)
+     (y . ,(- height 1))
+     (width . ,width)
+     (height . 1))))
+
+(define (handle-event! event)
+  "Handle a single event."
+  (let ((key    (assoc-ref event 'key))
+	(ctrl?  (assoc-ref event 'ctrl?))
+	(press? (equal? (assoc-ref event 'event-type) 'press)))
+    (cond
+     ((and ctrl? (equal? key "c"))
+      (quit!))
+     ((and press? (equal? key backspace-key))
+      (buffer-content-pop-char (assoc-ref (buffer-by-name "main") 'buffer)))
+     ((and press? key (not ctrl?))
+      (buffer-content-insert-string (assoc-ref (buffer-by-name "main") 'buffer) key)))))
+>>>>>>> main
