@@ -5,8 +5,11 @@ use scm_module::WillyCoreInternalModule;
 
 mod buffer_content;
 mod scm_module;
+mod scm_object_cache;
 mod tui;
 
+/// # Safety
+/// Makes call to unsafe code.
 #[no_mangle]
 pub unsafe extern "C" fn scm_init_willy_core_internal_module() {
     catch_unwind(|| {

@@ -28,6 +28,22 @@ impl Scm {
         self.0 == Self::EOL.0
     }
 
+    /// Equivalent to (equal? self other).
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn is_equal(&self, other: Scm) -> bool {
+        Scm::from(ffi::scm_equal_p(self.0, other.0)).to_bool()
+    }
+
+    /// Equivalent to (eq? self other).
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn is_eq(&self, other: Scm) -> bool {
+        Scm::from(ffi::scm_eq_p(self.0, other.0)).to_bool()
+    }
+
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn new_bool(b: bool) -> Scm {
@@ -288,8 +304,18 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn list_ref(self, k: usize) -> Scm {
-        let v = unsafe { ffi::scm_list_ref(self.0, Scm::new_u32(k as u32).0) };
+        let v = ffi::scm_list_ref(self.0, Scm::new_u32(k as u32).0);
         Scm(v)
+    }
+
+    /// Mark the SCM object as permanent and return the same object. The GC will never deallocate
+    /// the object.
+    ///
+    /// # Safety
+    /// Makes calls to C. Additionally, this should only be called at most once per object.
+    pub unsafe fn permanent(self) -> Scm {
+        ffi::scm_permanent_object(self.0);
+        self
     }
 }
 
