@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use flashkick::without_guile;
 use ratatui::prelude::Rect;
 use std::{ffi::CStr, panic::catch_unwind};
 
@@ -264,8 +265,11 @@ extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
                 Some(t) => t,
                 None => return Scm::EOL,
             };
-            let widgets = windows.iter().map(|scm| scm_widget_to_widget(scm));
-            tui.draw(widgets)
+            let widgets: Vec<_> = windows
+                .iter()
+                .map(|scm| scm_widget_to_widget(scm))
+                .collect();
+            without_guile(|| tui.draw(widgets.into_iter()))
         }
         .scm_unwrap();
         Scm::EOL
@@ -345,12 +349,9 @@ extern "C" fn scm_make_frame_limiter(target_fps: Scm) -> Scm {
 
 extern "C" fn scm_limit_frames(frame_limiter: Scm) -> Scm {
     catch_unwind(|| unsafe {
-        Scm::new_bool(
-            FrameLimiter::from_scm(frame_limiter)
-                .as_mut()
-                .map(|f| f.limit())
-                .unwrap_or(false),
-        )
+        let limiter = FrameLimiter::from_scm(frame_limiter);
+        let res = without_guile(|| limiter.as_mut().map(|f| f.limit()).unwrap_or(false));
+        Scm::new_bool(res)
     })
     .map_err(|e| format!("{e:?}"))
     .scm_unwrap()
