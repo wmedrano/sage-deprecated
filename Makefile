@@ -1,6 +1,11 @@
 # Run Willy.
 run:
-	guile main.scm
+	make build
+	LD_LIBRARY_PATH=target/debug guile main.scm
+
+run-release:
+	cargo build --release
+	LD_LIBRARY_PATH=target/release guile main.scm
 
 # Build Willy.
 build:
@@ -10,8 +15,8 @@ build:
 build-rust:
 	cargo build
 
-build-scheme: target/debug/libwilly.so
-	find scheme/ -type f -name "*.scm" -exec guild compile {} \;
+build-scheme:
+	LD_LIBRARY_PATH=target/debug find scheme/ -type f -name "*.scm" -exec guild compile {} \;
 
 # Run all Willy tests.
 test:
@@ -29,4 +34,4 @@ test-rustdoc:
 
 # Run Scheme tests.
 test-scheme:
-	find scheme/tests -type f -name "*.scm" -exec guile {} \;
+	LD_LIBRARY_PATH=target/debug find scheme/tests -type f -name "*.scm" -exec guile {} \;
