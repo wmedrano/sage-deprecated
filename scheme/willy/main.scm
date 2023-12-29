@@ -11,6 +11,10 @@
 
 (define* (run!)
   "Run the Willy text editor."
+  (with-exception-handler cleanup-and-reraise-exception run-impl!))
+
+(define* (run-impl!)
+  "Run the Willy text editor."
   (set! main-tui (tui:make-tui 'terminal))
   (log:log! "Starting Willy!")
   (event:run-event-loop
@@ -21,6 +25,13 @@
    #:event-handler handle-event!)
   ;; Just in case quit was not called and we need to clean up.
   (quit-tui!))
+
+(define* (cleanup-and-reraise-exception exception)
+  "Performs cleanups and raises exception.
+
+This is important as not cleaning up will keep the terminal in an unusable state."
+  (quit-tui!)
+  (raise-exception exception))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tui
@@ -118,6 +129,7 @@ buffer will be created and returned."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (handle-event! event)
   (base-handle-event! (file-picker:file-picker-handle-event! event)))
+
 (define* (base-handle-event! event)
   "Handle a single event."
   (let* ((key        (assoc-ref event 'key))
