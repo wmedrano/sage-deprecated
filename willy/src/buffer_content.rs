@@ -10,26 +10,24 @@ impl ForeignObjectType for BufferContent {
     const NAME: &'static str = "willy-buffer-content";
 }
 
+/// An empty buffer.
+pub static EMPTY_BUFFER_CONTENT: BufferContent = BufferContent::new();
+
 impl BufferContent {
     /// Create a new blank buffer.
-    pub fn new() -> BufferContent {
+    pub const fn new() -> BufferContent {
         BufferContent { lines: Vec::new() }
     }
 
     /// Create a new buffer from a string.
-    #[cfg(test)]
     pub fn with_str(s: &str) -> BufferContent {
         BufferContent {
             lines: s.split('\n').map(str::to_string).collect(),
         }
     }
 
-    /// Convert the buffer into a string.
-    pub fn to_string(&self) -> String {
-        self.lines.join("\n")
-    }
-
-    pub fn iter_lines(&self) -> impl Clone + Iterator<Item = &str> {
+    /// Iterate through all the lines.
+    pub fn iter_lines(&self) -> impl ExactSizeIterator + Iterator<Item = &str> {
         self.lines.iter().map(|s| s.as_str())
     }
 
@@ -69,8 +67,12 @@ impl BufferContent {
 
 impl std::fmt::Display for BufferContent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for line in self.lines.iter() {
-            writeln!(f, "{line}")?;
+        let mut lines = self.iter_lines();
+        if let Some(line) = lines.next() {
+            write!(f, "{line}")?;
+        }
+        for line in lines {
+            write!(f, "\n{line}")?;
         }
         Ok(())
     }
@@ -119,93 +121,5 @@ mod tests {
         assert_eq!(buffer.to_string(), "typoo");
         assert_eq!(buffer.pop_char(), Some('o'));
         assert_eq!(buffer.to_string(), "typo");
-    }
-}
-
-pub mod scm {
-    use std::ffi::CStr;
-
-    use flashkick::{
-        foreign_object::ForeignObjectType,
-        module::{Module, ModuleInitContext},
-        Scm,
-    };
-
-    use super::BufferContent;
-
-    #[no_mangle]
-    pub unsafe extern "C" fn scm_init_willy_internal_buffer_content() {
-        BufferContentModule.init();
-    }
-
-    struct BufferContentModule;
-
-    impl Module for BufferContentModule {
-        fn name() -> &'static std::ffi::CStr {
-            CStr::from_bytes_with_nul(b"willy internal\0").unwrap()
-        }
-
-        unsafe fn define(&self, ctx: &mut ModuleInitContext) {
-            ctx.define_type::<BufferContent>();
-            ctx.define_subr_0(
-                CStr::from_bytes_with_nul(b"--make-buffer-content\0").unwrap(),
-                scm_make_buffer_content,
-            );
-            ctx.define_subr_1(
-                CStr::from_bytes_with_nul(b"--buffer-content-to-string\0").unwrap(),
-                scm_buffer_content_to_string,
-                1,
-            );
-            ctx.define_subr_2(
-                CStr::from_bytes_with_nul(b"--buffer-content-insert-string\0").unwrap(),
-                scm_buffer_content_insert_string,
-                2,
-            );
-            ctx.define_subr_1(
-                CStr::from_bytes_with_nul(b"--buffer-content-pop-char\0").unwrap(),
-                scm_buffer_content_pop_char,
-                1,
-            );
-        }
-    }
-
-    extern "C" fn scm_make_buffer_content() -> Scm {
-        let buffer = Box::new(BufferContent::new());
-        unsafe { BufferContent::to_scm(buffer) }
-    }
-
-    extern "C" fn scm_buffer_content_to_string(buffer: Scm) -> Scm {
-        let buffer = match unsafe { BufferContent::from_scm(&buffer) } {
-            Some(b) => b,
-            None => return unsafe { Scm::new_string("") },
-        };
-        let s = buffer.to_string();
-        unsafe { Scm::new_string(&s) }
-    }
-
-    extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm) -> Scm {
-        let mut buffer_content = buffer_content;
-        let buffer_content = match unsafe { BufferContent::from_scm_mut(&mut buffer_content) } {
-            Some(b) => b,
-            None => return unsafe { Scm::new_string("") },
-        };
-        let string = unsafe { string.to_string() };
-        buffer_content.push_chars(string.chars());
-        Scm::EOL
-    }
-
-    extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {
-        let mut buffer_content = buffer_content;
-        let buffer_content = match unsafe { BufferContent::from_scm_mut(&mut buffer_content) } {
-            Some(b) => b,
-            None => return unsafe { Scm::new_string("") },
-        };
-        match buffer_content.pop_char() {
-            Some(c) => unsafe {
-                let mut tmp_buffer = [0u8; 4];
-                Scm::new_string(c.encode_utf8(&mut tmp_buffer))
-            },
-            None => unsafe { Scm::new_string("") },
-        }
     }
 }

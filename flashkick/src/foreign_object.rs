@@ -35,29 +35,11 @@ pub trait ForeignObjectType: 'static + Sized {
     ///
     /// # Safety
     /// Calls C code.
-    unsafe fn ptr_from_scm(obj: Scm) -> *mut Self {
+    unsafe fn from_scm(obj: Scm) -> *mut Self {
         let scm_type = TYPE_ID_TO_SCM_TYPE.get::<Self>().scm_unwrap();
         ffi::scm_assert_foreign_object_type(scm_type.0, obj.0);
         let ptr: *mut c_void = ffi::scm_foreign_object_ref(obj.0, 0);
         ptr.cast()
-    }
-
-    /// Get a reference of the underlying object.
-    ///
-    /// # Safety
-    /// Calls C code.
-    unsafe fn from_scm(obj: &Scm) -> Option<&Self> {
-        let ptr: *mut Self = Self::ptr_from_scm(*obj);
-        ptr.as_ref()
-    }
-
-    /// Get a mutable reference of the underlying object.
-    ///
-    /// # Safety
-    /// Calls C code.
-    unsafe fn from_scm_mut(obj: &mut Scm) -> Option<&mut Self> {
-        let ptr = Self::ptr_from_scm(*obj);
-        ptr.as_mut()
     }
 
     /// Drop the Scheme object.
@@ -70,7 +52,7 @@ pub trait ForeignObjectType: 'static + Sized {
 }
 
 unsafe extern "C" fn drop_scm_object<T: ForeignObjectType>(obj: ffi::SCM) {
-    let ptr = T::ptr_from_scm(obj.into());
+    let ptr = T::from_scm(obj.into());
     if ptr.is_null() {
         return;
     }

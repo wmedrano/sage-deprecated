@@ -1,6 +1,6 @@
 (use-modules (srfi srfi-64)
-	     (willy tui)
-	     (willy buffer))
+	     (willy core tui)
+	     (willy core buffer))
 
 (define %test-suite-name "tui")
 (test-begin %test-suite-name)
@@ -10,7 +10,7 @@
 
 (test-equal "tui test size is fixed value"
   '((width . 80) (height . 24))
-  (tui-size (make-tui 'test)))
+  (tui-size (make-tui)))
 
 (test-equal "make-tui is ok"
   (string-concatenate
@@ -39,13 +39,13 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                "))
-  (tui-state-for-test (make-tui 'test)))
+  (tui-state-for-test (make-tui)))
 
-(test-equal "can render layout"
+(test-equal "can render window"
   (string-concatenate
    '(
-     "  1 example text                                                                \n"
-     "  2   pass: true                                                                \n"
+     "example text                                                                    \n"
+     "  pass: true                                                                    \n"
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
@@ -70,15 +70,15 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `((
-       (buffer . ,(make-buffer-content "example text\n  pass: true "))
+       (buffer . ,(make-buffer #:string "example text\n  pass: true "))
        (x      . 0)
        (y      . 0)
        (width  . 80)
        (height . 24))))))
 
-(test-equal "can render multiple layouts"
+(test-equal "can render multiple windows"
   (string-concatenate
    '(
      "top left                                top right                               \n"
@@ -101,32 +101,32 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
-     "  1 multiline middle                                                            \n"
-     "  2 has line numbers                                                            \n"
+     "multiline string                                                                \n"
+     "has multiple lines                                                              \n"
      "                                                                                \n"
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `(
-      ((buffer . ,(make-buffer-content "top left"))
+      ((buffer . ,(make-buffer #:string "top left"))
        (x      . 0)
        (y      . 0)
        (width  . 40)
        (height . 20))
-      ((buffer . ,(make-buffer-content "top right"))
+      ((buffer . ,(make-buffer #:string "top right"))
        (x      . 40)
        (y      . 0)
        (width  . 40)
        (height . 20))
-      ((buffer . ,(make-buffer-content "multiline middle\nhas line numbers"))
+      ((buffer . ,(make-buffer #:string "multiline string\nhas multiple lines"))
        (x      . 0)
        (y      . 20)
        (width  . 40)
        (height . 4))
       ))))
 
-(test-equal "out of range layouts not rendered"
+(test-equal "out of range windows not rendered"
   (string-concatenate
    '(
      "good                                                                            \n"
@@ -155,36 +155,36 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `(
-      ((buffer . ,(make-buffer-content "partial out of range in x"))
+      ((buffer . ,(make-buffer #:string "partial out of range in x"))
        (x      . 40)
        (y      . 0)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(make-buffer-content "partial out of range in y"))
+      ((buffer . ,(make-buffer #:string "partial out of range in y"))
        (x      . 0)
        (y      . 20)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(make-buffer-content "completely out of range in x"))
+      ((buffer . ,(make-buffer #:string "completely out of range in x"))
        (x      . 100)
        (y      . 0)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(make-buffer-content "completely out of range in y"))
+      ((buffer . ,(make-buffer #:string "completely out of range in y"))
        (x      . 0)
        (y      . 100)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(make-buffer-content "good"))
+      ((buffer . ,(make-buffer #:string "good"))
        (x      . 0)
        (y      . 0)
        (width  . 80)
        (height . 24))))
    ))
 
-(test-equal "layouts render on top of each other"
+(test-equal "windows render on top of each other"
   (string-concatenate
    '(
      "1112222111                                                                      \n"
@@ -213,14 +213,14 @@
      "                                                                                "))
   (tui-state-for-test
    (tui-draw
-    (make-tui 'test)
+    (make-tui)
     `(
-      ((buffer . ,(make-buffer-content "1111111111"))
+      ((buffer . ,(make-buffer #:string "1111111111"))
        (x      . 0)
        (y      . 0)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(make-buffer-content "2222222222222222"))
+      ((buffer . ,(make-buffer #:string "2222222222222222"))
        (x      . 3)
        (y      . 0)
        (width  . 4)

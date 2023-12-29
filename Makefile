@@ -1,14 +1,11 @@
 # Run Willy.
 run:
-	cargo run -- main.scm
+	make build
+	LD_LIBRARY_PATH=target/debug guile main.scm
 
-# Run Willy in release mode.
 run-release:
-	cargo run --release -- main.scm
-
-# Run Willy starting in the Guile Scheme shell.
-run-shell:
-	cargo run
+	cargo build --release
+	LD_LIBRARY_PATH=target/release guile main.scm
 
 # Build Willy.
 build:
@@ -19,17 +16,17 @@ build-rust:
 	cargo build
 
 build-scheme:
-	find scheme/ -type f -name "*.scm" -exec guild compile {} \;
+	LD_LIBRARY_PATH=target/debug find scheme/ -type f -name "*.scm" -exec guild compile {} \;
 
 # Run all Willy tests.
 test:
 	make test-rust
-	make test-rust-doc
+	make test-rustdoc
 	make test-scheme
 
 # Run Rust tests.
 test-rust:
-	cargo nextest run
+	cargo test
 
 # Run Rust doc tests.
 test-rustdoc:
@@ -37,4 +34,4 @@ test-rustdoc:
 
 # Run Scheme tests.
 test-scheme:
-	find scheme/tests -type f -name "*.scm" -exec cargo run -- {} \;
+	LD_LIBRARY_PATH=target/debug find scheme/tests -type f -name "*.scm" -exec guile {} \;

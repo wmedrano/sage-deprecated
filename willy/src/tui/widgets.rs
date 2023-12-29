@@ -1,84 +1,89 @@
 use ratatui::{
     prelude::Rect,
     style::{Style, Stylize},
-    widgets::{Block, Widget},
+    widgets::{Block, BorderType, Borders, Clear, Widget},
 };
 
 use crate::buffer_content::BufferContent;
 
 use super::theme::ONEDARK_THEME;
 
-const LINE_NUMBER_WIDTH: u16 = 3;
-
 pub struct BufferWidget<'a> {
-    buffer: &'a BufferContent,
-    render_line_numbers: bool,
-}
-
-impl<'a> BufferWidget<'a> {
-    pub fn new(buffer: &'a BufferContent, render_line_numbers: bool) -> BufferWidget<'a> {
-        BufferWidget {
-            buffer,
-            render_line_numbers,
-        }
-    }
+    pub buffer: &'a BufferContent,
+    pub line_numbers: bool,
+    pub highlight_line: bool,
+    pub cursor: bool,
+    pub border: bool,
 }
 
 impl<'a> Widget for BufferWidget<'a> {
     fn render(self, area: Rect, buf: &mut ratatui::prelude::Buffer) {
-        let lines = self.buffer.iter_lines();
-        let line_count = self.buffer.iter_lines().count();
-        let should_render_line_number =
-            self.render_line_numbers && area.width > 2 * LINE_NUMBER_WIDTH && line_count > 1;
-        let positions = area.y..(area.y + area.height);
-        let line_number_x = area.x;
-        let text_x = if should_render_line_number {
-            area.x + LINE_NUMBER_WIDTH + 1
+        Clear.render(area, buf);
+        let area = if self.border {
+            let b = Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Plain)
+                .bg(ONEDARK_THEME.black1);
+            let a = b.inner(area);
+            b.render(area, buf);
+            a
         } else {
-            area.x
+            area
         };
-        let text_width = if should_render_line_number {
-            area.width - LINE_NUMBER_WIDTH - 1
-        } else {
-            area.width
-        };
-        let selected_line = if line_count == 0 { 0 } else { line_count - 1 };
-        for (idx, (line, y)) in lines.zip(positions).enumerate() {
-            let bg = if selected_line == idx {
-                ONEDARK_THEME.black3
-            } else {
-                ONEDARK_THEME.black1
-            };
-            let line_area = Rect {
+        let line_idx = 0..area.height as usize;
+        let selected_line = self.buffer.iter_lines().count();
+        let mut cursor_pos = None;
+        for (idx, line) in line_idx.zip(self.buffer.iter_lines()) {
+            let mut area = Rect {
                 x: area.x,
-                y,
+                y: area.y + idx as u16,
                 width: area.width,
                 height: 1,
             };
-            // Background.
-            Block::default().bg(bg).render(line_area, buf);
+            // Line background.
+            if self.highlight_line && selected_line == idx + 1 {
+                Block::new().bg(ONEDARK_THEME.black3).render(area, buf);
+            } else {
+                Block::new().bg(ONEDARK_THEME.black1).render(area, buf);
+            }
             // Line number.
-            if should_render_line_number {
-                let line_text = format!("{line_number: >3}", line_number = idx + 1);
+            if self.line_numbers && area.width >= 3 {
                 buf.set_stringn(
-                    line_number_x,
-                    y,
-                    line_text,
-                    LINE_NUMBER_WIDTH as usize,
+                    area.x,
+                    area.y,
+                    format!("{n: >3}", n = idx + 1),
+                    area.width as usize,
                     Style::new().fg(ONEDARK_THEME.white1),
                 );
+                area.x += 4;
+                area.width -= 4;
             }
-            // Line text.
-            let (cursor_x, _) = buf.set_stringn(
-                text_x,
-                y,
+            // Text: TODO, also set the width.
+            (area.x, area.y) = buf.set_stringn(
+                area.x,
+                area.y,
                 line,
-                text_width as usize,
+                area.width as usize,
                 Style::new().fg(ONEDARK_THEME.white3),
             );
-            // Cursor.
-            if should_render_line_number && idx == selected_line && cursor_x < area.right() {
-                buf.set_stringn(cursor_x, y, " ", 1, Style::new().bg(ONEDARK_THEME.white1));
+            if self.cursor && selected_line == idx + 1 {
+                cursor_pos = Some((area.x, area.y));
+            }
+        }
+        if self.buffer.iter_lines().count() < area.height as usize {
+            Block::new().bg(ONEDARK_THEME.black1).render(
+                Rect {
+                    x: area.x,
+                    y: area.y + self.buffer.iter_lines().count() as u16,
+                    width: area.width,
+                    height: area.height - self.buffer.iter_lines().count() as u16,
+                },
+                buf,
+            );
+        }
+        if let Some((x, y)) = cursor_pos {
+            if x < area.right() {
+                buf.set_stringn(x, y, " ", 1, Style::new().bg(ONEDARK_THEME.white3));
             }
         }
     }

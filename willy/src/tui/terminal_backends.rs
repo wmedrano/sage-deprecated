@@ -16,7 +16,7 @@ pub enum TerminalBackend {
 impl TerminalBackend {
     pub fn new(backend_type: BackendType) -> Result<TerminalBackend> {
         match backend_type {
-            BackendType::Default => {
+            BackendType::Terminal => {
                 let backend = CrosstermBackend::new(std::io::stdout());
                 crossterm::execute!(std::io::stdout(), crossterm::terminal::EnterAlternateScreen)?;
                 crossterm::terminal::enable_raw_mode()?;
