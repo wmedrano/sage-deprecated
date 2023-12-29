@@ -1,8 +1,11 @@
 use anyhow::anyhow;
+use flashkick::without_guile;
 use ratatui::prelude::Rect;
 use std::{ffi::CStr, panic::catch_unwind};
 
 use crate::buffer_content::{BufferContent, EMPTY_BUFFER_CONTENT};
+use crate::frame_limiter::FrameLimiter;
+use crate::scm_object_cache::cache;
 use crate::tui::{next_event, widgets::BufferWidget, BackendType, Tui, Window};
 use crossterm::event;
 use flashkick::{
@@ -31,7 +34,7 @@ impl Module for WillyCoreInternalModule {
             scm_buffer_content_to_string,
             1,
         );
-        ctx.define_subr_2(
+        ctx.define_subr_3(
             CStr::from_bytes_with_nul(b"--buffer-content-insert-string\0").unwrap(),
             scm_buffer_content_insert_string,
             2,
@@ -41,7 +44,7 @@ impl Module for WillyCoreInternalModule {
             scm_buffer_content_set_string,
             2,
         );
-        ctx.define_subr_1(
+        ctx.define_subr_2(
             CStr::from_bytes_with_nul(b"--buffer-content-pop-char\0").unwrap(),
             scm_buffer_content_pop_char,
             1,
@@ -77,6 +80,18 @@ impl Module for WillyCoreInternalModule {
             scm_tui_state_for_test,
             1,
         );
+
+        ctx.define_type::<FrameLimiter>();
+        ctx.define_subr_1(
+            CStr::from_bytes_with_nul(b"--make-frame-limiter\0").unwrap(),
+            scm_make_frame_limiter,
+            1,
+        );
+        ctx.define_subr_1(
+            CStr::from_bytes_with_nul(b"--limit-frames\0").unwrap(),
+            scm_limit_frames,
+            1,
+        );
     }
 }
 
@@ -94,12 +109,17 @@ extern "C" fn scm_buffer_content_to_string(buffer: Scm) -> Scm {
     unsafe { Scm::new_string(&s) }
 }
 
-extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm) -> Scm {
+extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm, line: Scm) -> Scm {
+    let line = if line.is_undefined() || !unsafe { line.to_bool() } {
+        None
+    } else {
+        Some(unsafe { line.to_u64() } as usize)
+    };
     match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
         None => return buffer_content,
     }
-    .push_chars(unsafe { string.to_string() }.chars());
+    .push_chars(unsafe { string.to_string() }.chars(), line);
     buffer_content
 }
 
@@ -113,12 +133,17 @@ extern "C" fn scm_buffer_content_set_string(scm_buffer_content: Scm, string: Scm
     scm_buffer_content
 }
 
-extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {
+extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm, line_number: Scm) -> Scm {
     let bc = match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
         None => return unsafe { Scm::new_string("") },
     };
-    match bc.pop_char() {
+    let line_number = if line_number.is_undefined() || !unsafe { line_number.to_bool() } {
+        None
+    } else {
+        Some(unsafe { line_number.to_u64() } as usize)
+    };
+    match bc.pop_char(line_number) {
         Some(c) => unsafe {
             let mut tmp_buffer = [0u8; 16];
             Scm::new_string(c.encode_utf8(&mut tmp_buffer))
@@ -126,6 +151,7 @@ extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {
         None => unsafe { Scm::new_string("") },
     }
 }
+
 pub extern "C" fn scm_next_event_from_terminal() -> Scm {
     catch_unwind(|| {
         let e = match next_event() {
@@ -140,14 +166,17 @@ pub extern "C" fn scm_next_event_from_terminal() -> Scm {
 
 extern "C" fn scm_make_tui(backend_type: Scm) -> Scm {
     catch_unwind(|| {
-        let backend_type = match unsafe { backend_type.to_symbol().as_str() } {
-            "terminal" => BackendType::Terminal,
-            "test" => BackendType::Test,
-            t => unsafe {
+        let backend_type = unsafe {
+            if backend_type.is_eq(cache().symbols.terminal) {
+                BackendType::Terminal
+            } else if backend_type.is_eq(cache().symbols.test) {
+                BackendType::Test
+            } else {
                 throw_error(anyhow!(
-                    "unknown backend type {t}, valid values are 'terminal and 'test"
+                    "unknown backend type {t}, valid values are 'terminal and 'test",
+                    t = backend_type.to_symbol(),
                 ))
-            },
+            }
         };
         let tui = Box::new(Tui::new(backend_type).scm_unwrap());
         unsafe { Tui::to_scm(tui) }
@@ -169,8 +198,8 @@ extern "C" fn scm_tui_size(tui: Scm) -> Scm {
     catch_unwind(|| {
         let make_size = |width, height| unsafe {
             Scm::with_alist([
-                (Scm::new_symbol("width"), Scm::new_u16(width)),
-                (Scm::new_symbol("height"), Scm::new_u16(height)),
+                (cache().symbols.width, Scm::new_u16(width)),
+                (cache().symbols.height, Scm::new_u16(height)),
             ])
         };
         let tui = match unsafe { Tui::from_scm(tui).as_ref() } {
@@ -199,26 +228,36 @@ unsafe fn scm_widget_to_widget(widget: Scm) -> Window<'static> {
         height: 0,
     };
     for (key, value) in widget.iter_pairs() {
-        let key = key.to_symbol();
-        match key.as_str() {
-            "buffer" => {
-                if let Some((_, b)) = value.iter_pairs().find(|(k, _)| k.to_symbol() == "content") {
+        match key {
+            k if k.is_eq(cache().symbols.buffer) => {
+                if let Some((_, b)) = value
+                    .iter_pairs()
+                    .find(|(k, _)| k.is_eq(cache().symbols.content))
+                {
                     ret.buffer = BufferContent::from_scm(b)
                         .as_ref()
                         .unwrap_or(&EMPTY_BUFFER_CONTENT);
                 }
             }
-            "x" => area.x = value.to_f64() as _,
-            "y" => area.y = value.to_f64() as _,
-            "width" => area.width = value.to_f64() as _,
-            "height" => area.height = value.to_f64() as _,
-            "features" => {
+            k if k.is_eq(cache().symbols.x) => area.x = value.to_f64() as _,
+            k if k.is_eq(cache().symbols.y) => area.y = value.to_f64() as _,
+            k if k.is_eq(cache().symbols.width) => area.width = value.to_f64() as _,
+            k if k.is_eq(cache().symbols.height) => area.height = value.to_f64() as _,
+            k if k.is_eq(cache().symbols.features) => {
                 for (feature, feature_value) in value.iter_pairs() {
-                    match feature.to_symbol().as_str() {
-                        "line-numbers" => ret.line_numbers = feature_value.to_bool(),
-                        "highlight-line" => ret.highlight_line = feature_value.to_bool(),
-                        "cursor" => ret.cursor = feature_value.to_bool(),
-                        "border" => ret.border = feature_value.to_bool(),
+                    match feature {
+                        f if f.is_eq(cache().symbols.line_numbers) => {
+                            ret.line_numbers = feature_value.to_bool()
+                        }
+                        f if f.is_eq(cache().symbols.highlight_line) => {
+                            ret.highlight_line = feature_value.to_bool()
+                        }
+                        f if f.is_eq(cache().symbols.cursor) => {
+                            ret.cursor = feature_value.to_bool()
+                        }
+                        f if f.is_eq(cache().symbols.border) => {
+                            ret.border = feature_value.to_bool()
+                        }
                         _ => (),
                     }
                 }
@@ -236,8 +275,11 @@ extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
                 Some(t) => t,
                 None => return Scm::EOL,
             };
-            let widgets = windows.iter().map(|scm| scm_widget_to_widget(scm));
-            tui.draw(widgets)
+            let widgets: Vec<_> = windows
+                .iter()
+                .map(|scm| scm_widget_to_widget(scm))
+                .collect();
+            without_guile(|| tui.draw(widgets.into_iter().rev()))
         }
         .scm_unwrap();
         Scm::EOL
@@ -281,28 +323,50 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
                 _ => return None,
             };
             let event_type = match kind {
-                event::KeyEventKind::Press => Scm::new_symbol("press"),
-                event::KeyEventKind::Release => Scm::new_symbol("release"),
-                event::KeyEventKind::Repeat => return None,
+                event::KeyEventKind::Press => cache().symbols.press,
+                // Consider keeping only press as release and repeat events are not being provided
+                // by crossterm at the moment.
+                event::KeyEventKind::Release => cache().symbols.release,
+                event::KeyEventKind::Repeat => cache().symbols.repeat,
             };
-            let alist = Scm::with_alist([
-                (Scm::new_symbol("event-type"), event_type),
-                (Scm::new_symbol("key"), Scm::new_string(key)),
+            let alist = [
+                (cache().symbols.event_type, event_type),
+                (cache().symbols.key, Scm::new_string(key)),
                 (
-                    Scm::new_symbol("shift?"),
+                    cache().symbols.shift_question,
                     Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
                 ),
                 (
-                    Scm::new_symbol("ctrl?"),
+                    cache().symbols.ctrl_question,
                     Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
                 ),
                 (
-                    Scm::new_symbol("alt?"),
+                    cache().symbols.alt_question,
                     Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
                 ),
-            ]);
-            Some(alist)
+            ]
+            .into_iter()
+            .filter(|(_, v)| v.to_bool());
+            Some(Scm::with_alist(alist))
         }
         _ => None,
     }
+}
+
+extern "C" fn scm_make_frame_limiter(target_fps: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        FrameLimiter::to_scm(Box::new(FrameLimiter::new(target_fps.to_f64() as u16)))
+    })
+    .map_err(|e| format!("{e:?}"))
+    .scm_unwrap()
+}
+
+extern "C" fn scm_limit_frames(frame_limiter: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let limiter = FrameLimiter::from_scm(frame_limiter);
+        let res = without_guile(|| limiter.as_mut().map(|f| f.limit()).unwrap_or(false));
+        Scm::new_bool(res)
+    })
+    .map_err(|e| format!("{e:?}"))
+    .scm_unwrap()
 }

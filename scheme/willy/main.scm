@@ -1,25 +1,36 @@
 (define-module (willy main)
   #:export (run!))
 (use-modules
- ((willy core buffer)     #:prefix buffer:)
- ((willy core event-loop) #:prefix event-loop:)
- ((willy core log)        #:prefix log:)
- ((willy core tui)        #:prefix tui:)
- ((willy core window)     #:prefix window:)
+ ((willy core buffer) #:prefix buffer:)
+ ((willy core event)  #:prefix event:)
+ ((willy core log)    #:prefix log:)
+ ((willy core tui)    #:prefix tui:)
+ ((willy core window) #:prefix window:)
  ((srfi srfi-1)))
 
 (define* (run!)
   "Run the Willy text editor."
+  (with-exception-handler cleanup-and-reraise-exception run-impl!))
+
+(define* (run-impl!)
+  "Run the Willy text editor."
   (set! main-tui (tui:make-tui 'terminal))
   (log:log! "Starting Willy!")
-  (event-loop:run-event-loop
+  (event:run-event-loop
    #:tui main-tui
    #:should-run-p (lambda () main-tui)
    #:make-layout make-layout
-   #:event-pump event-loop:next-event-from-terminal
+   #:event-pump event:next-event-from-terminal
    #:event-handler handle-event!)
   ;; Just in case quit was not called and we need to clean up.
   (quit-tui!))
+
+(define* (cleanup-and-reraise-exception exception)
+  "Performs cleanups and raises exception.
+
+This is important as not cleaning up will keep the terminal in an unusable state."
+  (quit-tui!)
+  (raise-exception exception))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tui
@@ -30,6 +41,7 @@
   "Exit/quit out of Willy."
   (if main-tui
       (begin
+        (log:log! "Quitting Willy!")
         (tui:delete-tui main-tui)
         (set! main-tui #f))))
 
@@ -38,7 +50,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define buffer-registry
   (list
-   (log:log-buffer)
+   log:log-buffer
    (buffer:make-buffer
     #:name "main"
     #:string ";; Welcome to Willy! A Scheme based text environment.\n")
@@ -94,7 +106,7 @@ buffer will be created and returned."
                        #:y        0
                        #:width    (/ width 2)
                        #:height   height)
-   (window:make-window #:buffer   (log:log-buffer)
+   (window:make-window #:buffer   log:log-buffer
                        #:features '((line-numbers   . #t))
                        #:x        (/ width 2)
                        #:y        0
@@ -110,17 +122,20 @@ buffer will be created and returned."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Events
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (handle-event! event)
+(define* (handle-event! event)
   "Handle a single event."
-  (let ((key    (assoc-ref event 'key))
-    (ctrl?  (assoc-ref event 'ctrl?))
-    (alt?   (assoc-ref event 'alt?))
-    (press? (equal? (assoc-ref event 'event-type) 'press)))
+  (let* ((key        (assoc-ref event 'key))
+         (ctrl?      (assoc-ref event 'ctrl?))
+         (alt?       (assoc-ref event 'alt?))
+         (mod?       (or ctrl? alt?))
+         (event-type (assoc-ref event 'event-type))
+         (press?     (equal? event-type 'press)))
     (cond
+     ((not event) #f)
      ((and ctrl? (not alt?) (equal? key "c"))
       (quit-tui!))
-     ((and press? (equal? key event-loop:backspace-key) (not ctrl?) (not alt?))
+     ((and (not mod?) press? (equal? key event:backspace-key))
       (buffer:buffer-pop-char (buffer-by-name "main")))
-     ((and press? key (not ctrl?) (not alt?))
+     ((and press? key (not mod?) (not (string-contains key "<")))
       (buffer:buffer-insert-string (buffer-by-name "main") key))
      (else (log:log! "Unhandled event " (object->string event))))))

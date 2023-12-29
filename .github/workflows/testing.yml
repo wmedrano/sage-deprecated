@@ -21,6 +21,8 @@ jobs:
           sudo apt-get -y install guile-3.0-dev
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1
+      - name: Install Cargo Nextest
+        uses: taiki-e/install-action@nextest
       - name: Rust Build
         run: make build-rust
       - name: Rust Test

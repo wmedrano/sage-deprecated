@@ -1,8 +1,8 @@
 (use-modules (srfi srfi-64)
-	     (willy core event-loop)
+	     (willy core event)
 	     (willy core tui))
 
-(define %test-suite-name "event-loop")
+(define %test-suite-name "event")
 (test-begin %test-suite-name)
 
 (test-equal "list-to-event-pump first call returns first value"

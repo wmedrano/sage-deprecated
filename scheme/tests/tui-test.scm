@@ -129,7 +129,7 @@
 (test-equal "out of range windows not rendered"
   (string-concatenate
    '(
-     "good                                                                            \n"
+     "good                                                                  partial ou\n"
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
@@ -152,21 +152,21 @@
      "                                                                                \n"
      "                                                                                \n"
      "                                                                                \n"
-     "                                                                                "))
+     "partial out of                                                                  "))
   (tui-state-for-test
    (tui-draw
     (make-tui)
     `(
       ((buffer . ,(make-buffer #:string "partial out of range in x"))
-       (x      . 40)
+       (x      . 70)
        (y      . 0)
        (width  . 80)
        (height . 24))
-      ((buffer . ,(make-buffer #:string "partial out of range in y"))
+      ((buffer . ,(make-buffer #:string "partial out of\nrange in y"))
        (x      . 0)
-       (y      . 20)
+       (y      . 23)
        (width  . 80)
-       (height . 24))
+       (height . 20))
       ((buffer . ,(make-buffer #:string "completely out of range in x"))
        (x      . 100)
        (y      . 0)
@@ -214,16 +214,15 @@
   (tui-state-for-test
    (tui-draw
     (make-tui)
-    `(
+    `(((buffer . ,(make-buffer #:string "2222222222222222"))
+       (x      . 3)
+       (y      . 0)
+       (width  . 4)
+       (height . 24))
       ((buffer . ,(make-buffer #:string "1111111111"))
        (x      . 0)
        (y      . 0)
        (width  . 80)
-       (height . 24))
-      ((buffer . ,(make-buffer #:string "2222222222222222"))
-       (x      . 3)
-       (y      . 0)
-       (width  . 4)
        (height . 24))))))
 
 (test-end %test-suite-name)

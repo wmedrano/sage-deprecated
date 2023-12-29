@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::{bail, Result};
 use crossterm::event;
@@ -11,11 +11,8 @@ pub mod terminal_backends;
 pub mod theme;
 pub mod widgets;
 
-const TARGET_FPS: u64 = 60;
-
 pub struct Tui {
     terminal: Terminal<TerminalBackend>,
-    previous_draw_time: Instant,
 }
 
 impl ForeignObjectType for Tui {
@@ -34,10 +31,7 @@ impl Tui {
         let backend = TerminalBackend::new(backend_type)?;
         let mut terminal = Terminal::new(backend)?;
         terminal.hide_cursor()?;
-        Ok(Tui {
-            terminal,
-            previous_draw_time: Instant::now(),
-        })
+        Ok(Tui { terminal })
     }
 
     /// Get the size of the terminal.
@@ -68,18 +62,13 @@ impl Tui {
         self.terminal.draw(|frame: &mut Frame| {
             let window_area = frame.size();
             frame.render_widget(Block::default().bg(ONEDARK_THEME.black1), window_area);
-            let should_render_widget = |w: &Window| {
-                w.area.width > 0 && w.area.height > 0 && window_area.intersection(w.area) == w.area
-            };
-            for widget in widgets.filter(should_render_widget) {
-                frame.render_widget(widget.widget, widget.area);
+            for widget in widgets {
+                let area = window_area.intersection(widget.area);
+                if area.width > 0 && area.height > 0 {
+                    frame.render_widget(widget.widget, area);
+                }
             }
         })?;
-        let target_time =
-            self.previous_draw_time + Duration::from_nanos(1_000_000_000 / TARGET_FPS);
-        let delay = target_time.duration_since(Instant::now());
-        std::thread::sleep(delay);
-        self.previous_draw_time = Instant::now();
         Ok(())
     }
 }
