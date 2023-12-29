@@ -332,33 +332,21 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
             let alist = [
                 (cache().symbols.event_type, event_type),
                 (cache().symbols.key, Scm::new_string(key)),
-                if modifiers.contains(event::KeyModifiers::SHIFT) {
-                    (
-                        cache().symbols.shift_question,
-                        Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
-                    )
-                } else {
-                    (Scm::UNDEFINED, Scm::UNDEFINED)
-                },
-                if modifiers.contains(event::KeyModifiers::CONTROL) {
-                    (
-                        cache().symbols.ctrl_question,
-                        Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
-                    )
-                } else {
-                    (Scm::UNDEFINED, Scm::UNDEFINED)
-                },
-                if modifiers.contains(event::KeyModifiers::ALT) {
-                    (
-                        cache().symbols.alt_question,
-                        Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
-                    )
-                } else {
-                    (Scm::UNDEFINED, Scm::UNDEFINED)
-                },
+                (
+                    cache().symbols.shift_question,
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
+                ),
+                (
+                    cache().symbols.ctrl_question,
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
+                ),
+                (
+                    cache().symbols.alt_question,
+                    Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
+                ),
             ]
             .into_iter()
-            .filter(|(k, _)| !k.is_undefined());
+            .filter(|(_, v)| v.to_bool());
             Some(Scm::with_alist(alist))
         }
         _ => None,
