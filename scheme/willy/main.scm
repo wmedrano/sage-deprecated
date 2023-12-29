@@ -6,7 +6,6 @@
  ((willy core log)    #:prefix log:)
  ((willy core tui)    #:prefix tui:)
  ((willy core window) #:prefix window:)
- ((willy file-picker) #:prefix file-picker:)
  ((srfi srfi-1)))
 
 (define* (run!)
@@ -97,10 +96,6 @@ buffer will be created and returned."
 ;; Windows
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (make-layout #:key width height)
-  (let ((windows (base-make-layout #:width width #:height height)))
-    (file-picker:file-picker-layout windows #:width width #:height height)))
-
-(define* (base-make-layout #:key width height)
   "Define the layout of the ui."
   (list
    (window:make-window #:buffer   (buffer-by-name "main")
@@ -128,9 +123,6 @@ buffer will be created and returned."
 ;; Events
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (handle-event! event)
-  (base-handle-event! (file-picker:file-picker-handle-event! event)))
-
-(define* (base-handle-event! event)
   "Handle a single event."
   (let* ((key        (assoc-ref event 'key))
          (ctrl?      (assoc-ref event 'ctrl?))
