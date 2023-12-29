@@ -3,7 +3,6 @@ use ratatui::prelude::Rect;
 use std::{ffi::CStr, panic::catch_unwind};
 
 use crate::buffer_content::{BufferContent, EMPTY_BUFFER_CONTENT};
-use crate::frame_limiter::FrameLimiter;
 use crate::tui::{next_event, widgets::BufferWidget, BackendType, Tui, Window};
 use crossterm::event;
 use flashkick::{
@@ -78,8 +77,6 @@ impl Module for WillyCoreInternalModule {
             scm_tui_state_for_test,
             1,
         );
-
-        ctx.define_type::<FrameLimiter>();
     }
 }
 
