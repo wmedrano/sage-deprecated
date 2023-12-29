@@ -285,17 +285,21 @@ impl Scm {
     ///
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn iter(self) -> impl Clone + ExactSizeIterator + Iterator<Item = Scm> {
+    pub unsafe fn iter(self) -> impl ExactSizeIterator + Iterator<Item = Scm> {
         let len = self.length();
-        // TODO: Use a better algorithm. This may be O(n) for each access makind iteration O(n^2).
-        (0..len).map(move |idx| self.list_ref(idx))
+        let mut lst = self;
+        (0..len).map(move |_| {
+            let v = lst.car();
+            lst = lst.cdr();
+            v
+        })
     }
 
     /// Iterate through pair elements.
     ///
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn iter_pairs(self) -> impl Clone + ExactSizeIterator + Iterator<Item = (Scm, Scm)> {
+    pub unsafe fn iter_pairs(self) -> impl ExactSizeIterator + Iterator<Item = (Scm, Scm)> {
         self.iter().map(|pair| (pair.car(), pair.cdr()))
     }
 

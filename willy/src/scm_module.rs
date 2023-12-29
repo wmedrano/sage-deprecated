@@ -34,7 +34,7 @@ impl Module for WillyCoreInternalModule {
             scm_buffer_content_to_string,
             1,
         );
-        ctx.define_subr_2(
+        ctx.define_subr_3(
             CStr::from_bytes_with_nul(b"--buffer-content-insert-string\0").unwrap(),
             scm_buffer_content_insert_string,
             2,
@@ -44,7 +44,7 @@ impl Module for WillyCoreInternalModule {
             scm_buffer_content_set_string,
             2,
         );
-        ctx.define_subr_1(
+        ctx.define_subr_2(
             CStr::from_bytes_with_nul(b"--buffer-content-pop-char\0").unwrap(),
             scm_buffer_content_pop_char,
             1,
@@ -109,12 +109,17 @@ extern "C" fn scm_buffer_content_to_string(buffer: Scm) -> Scm {
     unsafe { Scm::new_string(&s) }
 }
 
-extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm) -> Scm {
+extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm, line: Scm) -> Scm {
+    let line = if line.is_undefined() || !unsafe { line.to_bool() } {
+        None
+    } else {
+        Some(unsafe { line.to_u64() } as usize)
+    };
     match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
         None => return buffer_content,
     }
-    .push_chars(unsafe { string.to_string() }.chars());
+    .push_chars(unsafe { string.to_string() }.chars(), line);
     buffer_content
 }
 
@@ -128,12 +133,17 @@ extern "C" fn scm_buffer_content_set_string(scm_buffer_content: Scm, string: Scm
     scm_buffer_content
 }
 
-extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {
+extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm, line_number: Scm) -> Scm {
     let bc = match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
         None => return unsafe { Scm::new_string("") },
     };
-    match bc.pop_char() {
+    let line_number = if line_number.is_undefined() || !unsafe { line_number.to_bool() } {
+        None
+    } else {
+        Some(unsafe { line_number.to_u64() } as usize)
+    };
+    match bc.pop_char(line_number) {
         Some(c) => unsafe {
             let mut tmp_buffer = [0u8; 16];
             Scm::new_string(c.encode_utf8(&mut tmp_buffer))
@@ -269,7 +279,7 @@ extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
                 .iter()
                 .map(|scm| scm_widget_to_widget(scm))
                 .collect();
-            without_guile(|| tui.draw(widgets.into_iter()))
+            without_guile(|| tui.draw(widgets.into_iter().rev()))
         }
         .scm_unwrap();
         Scm::EOL

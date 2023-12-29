@@ -7,6 +7,7 @@
             ))
 (use-modules
  ((willy core tui)           #:prefix tui:)
+ ((willy core log)           #:prefix log:)
  ((willy core internal)      #:prefix internal:)
  ((willy core frame-limiter) #:prefix frame-limiter:)
  ((srfi srfi-1)))

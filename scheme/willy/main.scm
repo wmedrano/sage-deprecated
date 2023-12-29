@@ -6,6 +6,7 @@
  ((willy core log)    #:prefix log:)
  ((willy core tui)    #:prefix tui:)
  ((willy core window) #:prefix window:)
+ ((willy file-picker) #:prefix file-picker:)
  ((srfi srfi-1)))
 
 (define* (run!)
@@ -30,6 +31,7 @@
   "Exit/quit out of Willy."
   (if main-tui
       (begin
+        (log:log! "Quitting Willy!")
         (tui:delete-tui main-tui)
         (set! main-tui #f))))
 
@@ -84,6 +86,10 @@ buffer will be created and returned."
 ;; Windows
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (make-layout #:key width height)
+  (let ((windows (base-make-layout #:width width #:height height)))
+    (file-picker:file-picker-layout windows #:width width #:height height)))
+
+(define* (base-make-layout #:key width height)
   "Define the layout of the ui."
   (list
    (window:make-window #:buffer   (buffer-by-name "main")
@@ -110,17 +116,20 @@ buffer will be created and returned."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Events
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (handle-event! event)
+(define* (handle-event! event)
+  (base-handle-event! (file-picker:file-picker-handle-event! event)))
+(define* (base-handle-event! event)
   "Handle a single event."
   (let ((key    (assoc-ref event 'key))
-    (ctrl?  (assoc-ref event 'ctrl?))
-    (alt?   (assoc-ref event 'alt?))
-    (press? (equal? (assoc-ref event 'event-type) 'press)))
+        (ctrl?  (assoc-ref event 'ctrl?))
+        (alt?   (assoc-ref event 'alt?))
+        (press? (equal? (assoc-ref event 'event-type) 'press)))
     (cond
+     ((not event) #f)
      ((and ctrl? (not alt?) (equal? key "c"))
       (quit-tui!))
      ((and press? (equal? key event:backspace-key) (not ctrl?) (not alt?))
       (buffer:buffer-pop-char (buffer-by-name "main")))
-     ((and press? key (not ctrl?) (not alt?))
+     ((and press? key (not ctrl?) (not alt?) (not (string-contains key "<")))
       (buffer:buffer-insert-string (buffer-by-name "main") key))
      (else (log:log! "Unhandled event " (object->string event))))))
