@@ -26,7 +26,7 @@ test:
 
 # Run Rust tests.
 test-rust:
-	cargo nextest run
+	cargo test
 
 # Run Rust doc tests.
 test-rustdoc:
