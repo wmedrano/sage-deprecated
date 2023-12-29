@@ -1,6 +1,5 @@
 # Run Willy.
 run:
-	make build
 	LD_LIBRARY_PATH=target/debug guile main.scm
 
 run-release:
@@ -16,7 +15,8 @@ build-rust:
 	cargo build
 
 build-scheme:
-	LD_LIBRARY_PATH=target/debug find scheme/ -type f -name "*.scm" -exec guild compile {} \;
+	LD_LIBRARY_PATH=target/debug guild compile main.scm
+	LD_LIBRARY_PATH=target/debug find scheme -type f -name "*.scm" -exec guild compile {} \;
 
 # Run all Willy tests.
 test:
@@ -26,7 +26,7 @@ test:
 
 # Run Rust tests.
 test-rust:
-	cargo test
+	cargo nextest run
 
 # Run Rust doc tests.
 test-rustdoc:

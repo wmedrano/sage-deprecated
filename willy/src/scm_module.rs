@@ -3,6 +3,7 @@ use ratatui::prelude::Rect;
 use std::{ffi::CStr, panic::catch_unwind};
 
 use crate::buffer_content::{BufferContent, EMPTY_BUFFER_CONTENT};
+use crate::frame_limiter::FrameLimiter;
 use crate::scm_object_cache::cache;
 use crate::tui::{next_event, widgets::BufferWidget, BackendType, Tui, Window};
 use crossterm::event;
@@ -78,6 +79,18 @@ impl Module for WillyCoreInternalModule {
             scm_tui_state_for_test,
             1,
         );
+
+        ctx.define_type::<FrameLimiter>();
+        ctx.define_subr_1(
+            CStr::from_bytes_with_nul(b"--make-frame-limiter\0").unwrap(),
+            scm_make_frame_limiter,
+            1,
+        );
+        ctx.define_subr_1(
+            CStr::from_bytes_with_nul(b"--limit-frames\0").unwrap(),
+            scm_limit_frames,
+            1,
+        );
     }
 }
 
@@ -127,6 +140,7 @@ extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {
         None => unsafe { Scm::new_string("") },
     }
 }
+
 pub extern "C" fn scm_next_event_from_terminal() -> Scm {
     catch_unwind(|| {
         let e = match next_event() {
@@ -319,4 +333,25 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
         }
         _ => None,
     }
+}
+
+extern "C" fn scm_make_frame_limiter(target_fps: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        FrameLimiter::to_scm(Box::new(FrameLimiter::new(target_fps.to_f64() as u16)))
+    })
+    .map_err(|e| format!("{e:?}"))
+    .scm_unwrap()
+}
+
+extern "C" fn scm_limit_frames(frame_limiter: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        Scm::new_bool(
+            FrameLimiter::from_scm(frame_limiter)
+                .as_mut()
+                .map(|f| f.limit())
+                .unwrap_or(false),
+        )
+    })
+    .map_err(|e| format!("{e:?}"))
+    .scm_unwrap()
 }

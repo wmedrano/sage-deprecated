@@ -5,7 +5,9 @@
             --buffer-content-set-string
             --buffer-content-to-string
             --delete-tui
+            --limit-frames
             --make-buffer-content
+            --make-frame-limiter
             --make-tui
             --next-event-from-terminal
             --tui-draw

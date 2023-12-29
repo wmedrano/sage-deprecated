@@ -4,6 +4,7 @@ use flashkick::{err::ResultToScm, module::Module};
 use scm_module::WillyCoreInternalModule;
 
 mod buffer_content;
+mod frame_limiter;
 mod scm_module;
 mod scm_object_cache;
 mod tui;
