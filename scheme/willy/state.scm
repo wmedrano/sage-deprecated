@@ -1,7 +1,7 @@
 (define-module (willy state)
   #:export (
             buffer-by-name
-            buffer-for-selected-window
+            buffer-for-focused-window
             event-hook
             frame-resize-hook
             frame-size
@@ -9,7 +9,7 @@
             add-window!
             previous-frame-size
             quit!
-            selected-window
+            focused-window
             tui
             windows
             ))
@@ -85,7 +85,7 @@
                           #:features '((line-numbers   . #t)
                                        (highlight-line . #t)
                                        (cursor         . #t)
-                                       (selected?      . #t)
+                                       (focused?       . #t)
                                        (editable?      . #t))
                           #:x        0
                           #:y        0
@@ -98,16 +98,16 @@
                           #:width    (/ width 2)
                           #:height   height)))))
 
-(define* (selected-window)
-  "Get the currently selected window.
+(define* (focused-window)
+  "Get the currently focused window.
 
-The selected window is the one with the selected? feature."
-  (find (lambda (w) (window:window-feature w 'selected?))
+The focused window is the one with the focused? feature."
+  (find (lambda (w) (window:window-feature w 'focused?))
         (unbox windows)))
 
-(define* (buffer-for-selected-window)
-  "Get the buffer for the currently selected window."
-  (and-let* ((w (selected-window)))
+(define* (buffer-for-focused-window)
+  "Get the buffer for the currently focused window."
+  (and-let* ((w (focused-window)))
     (window:window-bufer w)))
 
 (define* (retain-windows! pred)
