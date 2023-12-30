@@ -2,10 +2,11 @@
   #:export (
             buffer-by-name
             buffer-for-selected-window
-            update-frame-size!
             event-hook
             frame-resize-hook
             frame-size
+            retain-windows!
+            add-window!
             previous-frame-size
             quit!
             selected-window
@@ -18,6 +19,18 @@
              ((willy core window) #:prefix window:)
              ((srfi srfi-1))
              ((srfi srfi-111)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Hooks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Runs when the frame is resized. The arguments are the new width and
+;; the new height. To get the previous frame size, call (unbox
+;; previous-frame-size).
+(define* frame-resize-hook (make-hook 2))
+
+;; Called for each event. The event is the only argument to the hook.
+(define event-hook (make-hook 1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Buffers
@@ -56,16 +69,6 @@
         (log:log! "Quitting Willy!")
         (tui:delete-tui (unbox tui))
         (set-box! tui #f))))
-
-(define* frame-resize-hook (make-hook 2))
-
-(define* (update-frame-size! width height)
-  "Sets the frame-size box."
-  (if (and (> width 0) (> height 0))
-      (begin
-        (set-box! previous-frame-size (unbox frame-size))
-        (set-box! frame-size `((width . ,width) (height . ,height)))
-        (run-hook frame-resize-hook width height))))
 
 (define* windows
   (box
@@ -107,7 +110,11 @@ The selected window is the one with the selected? feature."
   (let ((w (selected-window)))
     (and w (window:window-buffer w))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Events
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define event-hook (make-hook 1))
+(define* (retain-windows! pred)
+  "Remove all windows that do not pass the predicate."
+  (set-box! windows
+            (filter pred (unbox windows))))
+
+(define* (add-window! window)
+  "Add window to the set of windows."
+  (set-box! windows (cons window (unbox windows))))

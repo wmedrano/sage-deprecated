@@ -10,6 +10,9 @@
              ((srfi srfi-1))
              ((srfi srfi-111)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Base
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (insert-char-to-selected-window event)
   "Insert the character from the event onto the buffer of the selected
 window.
@@ -45,11 +48,13 @@ event is a backspace key press."
 
 (define* (handle-ctrl-keys event)
   "Handle any operations having to do with the ctrl keys."
-  (let ((key   (assoc-ref event 'key))
-        (ctrl? (assoc-ref event 'ctrl?))
-        (alt?  (assoc-ref event 'alt?)))
+  (let* ((key        (assoc-ref event 'key))
+         (base-ctrl? (assoc-ref event 'ctrl?))
+         (base-alt?  (assoc-ref event 'alt?))
+         (ctrl?      (and base-ctrl? (not base-alt?)))
+         (alt?       (and (not base-ctrl?) base-alt?)))
     (cond
-     ((and ctrl? (not alt?) (equal? key "c")) (state:quit!)))))
+     ((and ctrl? (equal? key "c")) (state:quit!)))))
 
 (define* (reposition-status-bar width height)
   (define (status-bar-window? w)

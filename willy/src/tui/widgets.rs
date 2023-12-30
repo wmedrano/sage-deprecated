@@ -22,7 +22,7 @@ impl<'a> Widget for BufferWidget<'a> {
         let area = if self.border {
             let b = Block::new()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Plain)
+                .border_type(BorderType::Rounded)
                 .bg(ONEDARK_THEME.black1);
             let a = b.inner(area);
             b.render(area, buf);
