@@ -1,11 +1,16 @@
 (define-module (willy state)
   #:export (
-            buffer-by-name
-            buffer-for-focused-window
+            ;; Hooks
             event-hook
             frame-resize-hook
+            window-focus-hook
+            window-unfocus-hook
+
+            buffer-by-name
+            buffer-for-focused-window
             frame-size
             retain-windows!
+            set-focused-window!
             add-window!
             previous-frame-size
             quit!
@@ -13,7 +18,7 @@
             tui
             windows
             ))
-(use-modules ((willy core log)    #:prefix log:)
+(use-modules ((willy core log)    #:select (log-buffer log!))
              ((willy core tui)    #:prefix tui:)
              ((willy core buffer) #:prefix buffer:)
              ((willy core window) #:prefix window:)
@@ -33,12 +38,18 @@
 ;; Called for each event. The event is the only argument to the hook.
 (define event-hook (make-hook 1))
 
+;; Called when a window gains focus.
+(define window-focus-hook (make-hook 1))
+
+;; Called when a window loses focus.
+(define window-unfocus-hook (make-hook 1))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Buffers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* buffer-registry
   (box (list
-        log:log-buffer
+        log-buffer
         (buffer:make-buffer
          #:name "main"
          #:string ";; Welcome to Willy! A Scheme based text environment.\n")
@@ -66,7 +77,7 @@
 (define* (quit!)
   "Exit/quit out of Willy."
   (when (unbox tui)
-    (log:log! "Quitting Willy!")
+    (log! "Quitting Willy!")
     (tui:delete-tui (unbox tui))
     (set-box! tui #f)))
 
@@ -85,25 +96,35 @@
                           #:features '((line-numbers   . #t)
                                        (highlight-line . #t)
                                        (cursor         . #t)
-                                       (focused?       . #t)
                                        (editable?      . #t))
                           #:x        0
                           #:y        0
                           #:width    (/ width 2)
                           #:height   height)
-      (window:make-window #:buffer   log:log-buffer
+      (window:make-window #:buffer   log-buffer
                           #:features '((line-numbers . #t))
                           #:x        (/ width 2)
                           #:y        0
                           #:width    (/ width 2)
                           #:height   height)))))
 
+(define focused-window-box (box #f))
+
+(define* (set-focused-window! window)
+  "Set the newly focused window."
+  (let* ((previous-focused-window (unbox focused-window-box)))
+    (unless (eq? previous-focused-window window)
+      (set-box! focused-window-box window)
+      (when previous-focused-window
+        (run-hook window-focus-hook previous-focused-window))
+      (when window
+        (run-hook window-focus-hook window)))))
+
 (define* (focused-window)
   "Get the currently focused window.
 
 The focused window is the one with the focused? feature."
-  (find (lambda (w) (window:window-feature w 'focused?))
-        (unbox windows)))
+  (unbox focused-window-box))
 
 (define* (buffer-for-focused-window)
   "Get the buffer for the currently focused window."
@@ -115,6 +136,8 @@ The focused window is the one with the focused? feature."
   (set-box! windows
             (filter pred (unbox windows))))
 
-(define* (add-window! window)
+(define* (add-window! window #:key (set-focus? #f))
   "Add window to the set of windows."
-  (set-box! windows (cons window (unbox windows))))
+  (set-box! windows (cons window (unbox windows)))
+  (when set-focus?
+    (set-focused-window! window)))

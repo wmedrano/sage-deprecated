@@ -54,7 +54,7 @@
                                      #:height   (* frame-height 14/16))))
     (set-box! open-file-window window)
     (open-file-set-query! "")
-    (state:add-window! window)))
+    (state:add-window! window #:set-focus? #t)))
 
 (define* (open-file-close!)
   (remove-hook! state:event-hook open-file-handle-event)
@@ -62,7 +62,12 @@
                            (not
                             (eq? (unbox open-file-window)
                                  w))))
-  (set-box! open-file-window #f))
+  (let* ((is-editable? (lambda (w) (window:window-feature w 'editable?)))
+         (any-editable-window (find is-editable?
+                                    (unbox state:windows))))
+    (state:set-focused-window! (or any-editable-window
+                                   (car (unbox state:windows))))
+    (set-box! open-file-window #f)))
 
 (define* (open-file!)
   (if (unbox open-file-window)
@@ -122,6 +127,8 @@ event is a backspace key press."
                               (not (assoc-ref event 'alt?)))))
     (cond
      ((equal? key "o") (open-file!))
+     ((equal? key "h") (for-each  log!
+                                  (hook->list state:event-hook)))
      ((equal? key "c") (state:quit!)))))
 
 (define* (reposition-status-bar width height)
