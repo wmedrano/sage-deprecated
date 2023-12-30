@@ -1,12 +1,4 @@
-# Run Willy.
-run:
-	LD_LIBRARY_PATH=target/debug guile main.scm
-
-run-release:
-	cargo build --release
-	LD_LIBRARY_PATH=target/release guile main.scm
-
-# Build Willy.
+# Build
 build:
 	make build-rust
 	make build-scheme
@@ -15,23 +7,32 @@ build-rust:
 	cargo build
 
 build-scheme:
-	LD_LIBRARY_PATH=target/debug guild compile main.scm
+	LD_LIBRARY_PATH=target/debug guild compile config.scm
 	LD_LIBRARY_PATH=target/debug find scheme -type f -name "*.scm" -exec guild compile {} \;
 
-# Run all Willy tests.
+# Run
+run:
+	LD_LIBRARY_PATH=target/debug guile config.scm --debug
+
+run-release:
+	cargo build --release
+	LD_LIBRARY_PATH=target/release guile config.scm
+
+flamegraph-profile:
+	cargo build --release
+	LD_LIBRARY_PATH=target/release flamegraph -- guile config.scm
+
+# Test
 test:
 	make test-rust
 	make test-rustdoc
 	make test-scheme
 
-# Run Rust tests.
 test-rust:
 	cargo nextest run
 
-# Run Rust doc tests.
 test-rustdoc:
 	cargo test --doc
 
-# Run Scheme tests.
 test-scheme:
 	LD_LIBRARY_PATH=target/debug find scheme/tests -type f -name "*.scm" -exec guile {} \;

@@ -22,7 +22,7 @@ impl<'a> Widget for BufferWidget<'a> {
         let area = if self.border {
             let b = Block::new()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Plain)
+                .border_type(BorderType::Rounded)
                 .bg(ONEDARK_THEME.black1);
             let a = b.inner(area);
             b.render(area, buf);
@@ -56,6 +56,9 @@ impl<'a> Widget for BufferWidget<'a> {
                     Style::new().fg(ONEDARK_THEME.white1),
                 );
                 area = advance_rect(area, 4, 0);
+                if area.width == 0 {
+                    continue;
+                }
             }
             let (new_x, new_y) = buf.set_stringn(
                 area.x,
@@ -65,6 +68,9 @@ impl<'a> Widget for BufferWidget<'a> {
                 Style::new().fg(ONEDARK_THEME.white3),
             );
             area = advance_rect(area, new_x - area.x, new_y - area.y);
+            if area.width == 0 {
+                continue;
+            }
             // Cursor
             if self.cursor && selected_line == idx + 1 {
                 cursor_pos = Some((area.x, area.y));
