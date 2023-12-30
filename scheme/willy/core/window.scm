@@ -6,6 +6,7 @@
             window-feature
             ))
 (use-modules (srfi srfi-1)
+             (srfi srfi-2)
              (ice-9 hash-table))
 
 (define* (make-window #:key
@@ -29,14 +30,13 @@
 
 (define* (window-feature window feature)
   "Get the value for a specific window feature."
-  (define all-features (window-features window))
-  (define (target-feature? feature-value-pair)
-    (and (pair? feature-value-pair)
-         (equal? feature (car feature-value-pair))))
-  (if (pair? all-features)
-      (let ((feature-value (find target-feature? all-features)))
-        (if feature-value (cdr feature-value) #f))
-      #f))
+  (and-let* ((all-features (window-features window))
+             (target-feature? (lambda (feature-value-pair)
+                                (and (pair? feature-value-pair)
+                                     (equal? feature (car feature-value-pair)))))
+             (feature (and (pair? all-features)
+                           (find target-feature? all-features))))
+    (cdr feature)))
 
 (define* (window-buffer window)
   "Get the buffer for the window."

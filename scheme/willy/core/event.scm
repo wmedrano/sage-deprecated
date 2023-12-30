@@ -1,7 +1,7 @@
 (define-module (willy core event)
   #:export (
             backspace-key
-            list-to-event-pump
+            list->event-pump
             next-event-from-terminal
             run-event-loop
             special-key?
@@ -11,7 +11,8 @@
  ((willy core log)           #:prefix log:)
  ((willy core internal)      #:prefix internal:)
  ((willy core frame-limiter) #:prefix frame-limiter:)
- ((srfi srfi-1)))
+ ((srfi srfi-1))
+ ((srfi srfi-111)))
 
 (define* backspace-key "<backspace>")
 
@@ -38,37 +39,35 @@ event-handler - A function that handles a single event returned by event-pump."
            (frame-limiter:limit-frames frame-limiter)
            (handle-all-events event-pump event-handler)
            (let ((size (tui:tui-size tui)))
-             (if (not (equal? size frame-size))
-                 (begin
-                   (on-resize (assoc-ref size 'width)
-                              (assoc-ref size 'height))
-                   (set! frame-size size)))))))
+             (when (not (equal? size frame-size))
+               (on-resize (assoc-ref size 'width)
+                          (assoc-ref size 'height))
+               (set! frame-size size))))))
 
 (define* (next-event-from-terminal)
   "Get the next terminal event."
   (internal:--next-event-from-terminal))
 
-(define* (list-to-event-pump events)
+(define* (list->event-pump events)
   "Convert a list of events into an event pump."
-  (let ((next events)
-	(curr #t))
+  (let ((next-events (box events)))
     (lambda ()
-      (if curr
-	  (begin
-	    (if (pair? next)
-		(begin
-		  (set! curr (car next))
-		  (set! next (cdr next)))
-		(set! curr #f))))
-      curr)))
+      (if (pair? (unbox next-events))
+          (let ((event (car (unbox next-events)))
+                (rest  (cdr (unbox next-events))))
+            (set-box! next-events rest)
+            event)
+          #f))))
 
 (define* (handle-all-events event-pump event-handler)
   "Handle all events returned by event-pump."
   (let handle-single-event ((event (event-pump)))
-    (if event
-	(begin
-	  (event-handler event)
-	  (handle-single-event (event-pump))))))
+    (when event
+      (event-handler event)
+      (handle-single-event (event-pump)))))
 
 (define* (special-key? key)
+  "Returns #t if key is not a normal character.
+
+Example special key: <backspace>"
   (> (string-length key) 1))

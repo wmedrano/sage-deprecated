@@ -8,6 +8,7 @@
              ((willy core window) #:prefix window:)
              ((willy state)       #:prefix state:)
              ((srfi srfi-1))
+             ((srfi srfi-2))
              ((srfi srfi-111)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -19,56 +20,46 @@ window.
 
 Only runs if the selected window has the feature 'editable? and the
 event is a basic key press."
-  (let ((w         (state:selected-window))
-        (b         (state:buffer-for-selected-window))
-        (modifier? (or (assoc-ref event 'ctrl?)
-                       (assoc-ref event 'alt?)))
-        (key       (assoc-ref event 'key)))
-    (and b
-         (window:window-feature w 'editable?)
-         (not modifier?)
-         (not (event:special-key? key))
-         (buffer:buffer-insert-string b key))))
+  (and-let* ((w (state:selected-window))
+             (b (window:window-buffer w))
+             (editable? (window:window-feature w 'editable?))
+             (no-mod? (not (or (assoc-ref event 'ctrl?)
+                               (assoc-ref event 'alt?))))
+             (key (assoc-ref event 'key))
+             (simple-key? (not (event:special-key? key))))
+    (buffer:buffer-insert-string b key)))
 
 (define* (delete-char-from-selected-window event)
   "Delete the last character from the buffer of the selected window.
 
 Only runs if the selected window has the 'editable? feature and the
 event is a backspace key press."
-  (let ((w         (state:selected-window))
-        (b         (state:buffer-for-selected-window))
-        (modifier? (or (assoc-ref event 'ctrl?)
-                       (assoc-ref event 'alt?)))
-        (key       (assoc-ref event 'key)))
-    (and b
-         (window:window-feature w 'editable?)
-         (not modifier?)
-         (equal? key event:backspace-key)
-         (buffer:buffer-pop-char b))))
+  (and-let* ((w (state:selected-window))
+             (b (window:window-buffer w))
+             (editable? (window:window-feature w 'editable?))
+             (no-mod? (not (or (assoc-ref event 'ctrl?)
+                               (assoc-ref event 'alt?))))
+             (is-backspace (equal? (assoc-ref event 'key)
+                                   event:backspace-key)))
+    (buffer:buffer-pop-char b)))
 
 (define* (handle-ctrl-keys event)
   "Handle any operations having to do with the ctrl keys."
-  (let* ((key        (assoc-ref event 'key))
-         (base-ctrl? (assoc-ref event 'ctrl?))
-         (base-alt?  (assoc-ref event 'alt?))
-         (ctrl?      (and base-ctrl? (not base-alt?)))
-         (alt?       (and (not base-ctrl?) base-alt?)))
+  (and-let* ((key        (assoc-ref event 'key))
+             (ctrl?      (and (assoc-ref event 'ctrl?)
+                              (not (assoc-ref event 'alt?)))))
     (cond
-     ((and ctrl? (equal? key "c")) (state:quit!)))))
+     ((equal? key "c") (state:quit!)))))
 
 (define* (reposition-status-bar width height)
-  (define (status-bar-window? w)
-    (window:window-feature w 'status-bar?))
-  (define status-bar-window (find status-bar-window? (unbox state:windows)))
-  (define (fix-position window)
-    (window:window-set-position! window
-                                 #:x 0 #:y (- height 1)
-                                 #:width width #:height 1))
-  (if status-bar-window (fix-position status-bar-window)))
+  (and-let* ((status-bar-window? (lambda (w) (window:window-feature w 'status-bar?)))
+             (status-bar-window  (find status-bar-window? (unbox state:windows))))
+    (window:window-set-position!
+     status-bar-window
+     #:x 0 #:y (- height 1)
+     #:width width #:height 1)))
 
 (define* (resize-by-proportion width height)
-  (define (at-least-1 x)
-    (if (< x 1) 1 x))
   (let* ((previous-size   (unbox state:previous-frame-size))
          (previous-width  (assoc-ref previous-size 'width))
          (previous-height (assoc-ref previous-size 'height))
@@ -80,10 +71,8 @@ event is a backspace key press."
              (w-width  (* (assoc-ref window 'width) x-scale))
              (w-height (* (assoc-ref window 'height) y-scale)))
         (window:window-set-position! window
-                                     #:x      w-x
-                                     #:y      w-y
-                                     #:width  (at-least-1 w-width)
-                                     #:height (at-least-1 w-height))))
+                                     #:x     w-x     #:y      w-y
+                                     #:width w-width #:height w-height)))
     (for-each fix-by-proportion
               (unbox state:windows))))
 

@@ -18,6 +18,7 @@
              ((willy core buffer) #:prefix buffer:)
              ((willy core window) #:prefix window:)
              ((srfi srfi-1))
+             ((srfi srfi-2))
              ((srfi srfi-111)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,12 +49,12 @@
 (define* (buffer-by-name name)
   "Get a buffer by its name or #f if it does not exist."
   (let buffer-by-name ((buffers (unbox buffer-registry)))
-    (cond ((not (pair? buffers))
-           #f)
-          ((equal? name (buffer:buffer-name (car buffers)))
-           (car buffers))
-          (else
-           (buffer-by-name (cdr buffers))))))
+    (and-let* ((is-pair? (pair? buffers))
+               (head     (car buffers))
+               (head-name (buffer:buffer-name head)))
+      (if (equal? head-name name)
+          head
+          (buffer-by-name (cdr buffers))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Windows
@@ -64,11 +65,10 @@
 
 (define* (quit!)
   "Exit/quit out of Willy."
-  (if (unbox tui)
-      (begin
-        (log:log! "Quitting Willy!")
-        (tui:delete-tui (unbox tui))
-        (set-box! tui #f))))
+  (when (unbox tui)
+    (log:log! "Quitting Willy!")
+    (tui:delete-tui (unbox tui))
+    (set-box! tui #f)))
 
 (define* windows
   (box
@@ -107,8 +107,8 @@ The selected window is the one with the selected? feature."
 
 (define* (buffer-for-selected-window)
   "Get the buffer for the currently selected window."
-  (let ((w (selected-window)))
-    (and w (window:window-buffer w))))
+  (and-let* ((w (selected-window)))
+    (window:window-bufer w)))
 
 (define* (retain-windows! pred)
   "Remove all windows that do not pass the predicate."

@@ -10,7 +10,9 @@
 (define* (log! . vals)
   (define t (strftime "%Y-%m-%d %H:%M:%S" (localtime (current-time))))
   (define (stringify x)
-    (if (string? x) x (object->string x)))
+    (if (string? x)
+        x
+        (object->string x)))
   (define (output x)
     (buffer:buffer-insert-string log-buffer
                                  (stringify x)))

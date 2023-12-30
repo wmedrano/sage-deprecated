@@ -1,17 +1,18 @@
 (use-modules (srfi srfi-64)
 	     (willy core event)
-	     (willy core tui))
+	     (willy core tui)
+             (srfi srfi-111))
 
 (define %test-suite-name "event")
 (test-begin %test-suite-name)
 
-(test-equal "list-to-event-pump first call returns first value"
+(test-equal "list->event-pump first call returns first value"
   "my event"
-  ((list-to-event-pump '("my event" "other event"))))
+  ((list->event-pump '("my event" "other event"))))
 
-(test-equal "list-to-event-pump nth call returns nth value"
+(test-equal "list->event-pump nth call returns nth value"
   "nth event"
-  (let ((event-pump (list-to-event-pump '("my event" "other event" "nth event"))))
+  (let ((event-pump (list->event-pump '("my event" "other event" "nth event"))))
     (event-pump)
     (event-pump)
     (event-pump)))
@@ -31,11 +32,11 @@
 
 (test-equal "run-event-loop executes event handler"
   "my custom event"
-  (let ((last-event #f))
+  (let ((last-event (box #f)))
     (run-event-loop
-     #:should-run-p (lambda () (not last-event))
-     #:event-pump (list-to-event-pump '("my custom event"))
-     #:event-handler (lambda (e) (set! last-event e)))
-    last-event))
+     #:should-run-p (lambda () (not (unbox last-event)))
+     #:event-pump (list->event-pump '("my custom event"))
+     #:event-handler (lambda (e) (set-box! last-event e)))
+    (unbox last-event)))
 
 (test-end %test-suite-name)
