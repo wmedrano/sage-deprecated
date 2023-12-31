@@ -12,15 +12,15 @@ build-scheme:
 
 # Run
 run:
-	LD_LIBRARY_PATH=target/debug guile config.scm --debug
+	LD_LIBRARY_PATH=target/debug GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} guile -l config.scm -e main --listen
 
 run-release:
 	cargo build --release
-	LD_LIBRARY_PATH=target/release guile config.scm
+	LD_LIBRARY_PATH=target/release GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} guile config.scm -e main
 
 flamegraph-profile:
 	cargo build --release
-	LD_LIBRARY_PATH=target/release flamegraph -- guile config.scm
+	LD_LIBRARY_PATH=target/release GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} flamegraph -- guile config.scm
 
 # Test
 test:
@@ -35,4 +35,4 @@ test-rustdoc:
 	cargo test --doc
 
 test-scheme:
-	LD_LIBRARY_PATH=target/debug find scheme/tests -type f -name "*.scm" -exec guile {} \;
+	LD_LIBRARY_PATH=target/debug GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} find scheme/tests -type f -name "*.scm" -exec guile {} \;

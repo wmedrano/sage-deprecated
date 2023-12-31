@@ -23,7 +23,7 @@
   (event:run-event-loop
    #:tui           (unbox state:tui)
    #:should-run-p  (lambda () (unbox state:tui))
-   #:make-layout   (lambda () (unbox state:windows))
+   #:make-layout   (lambda () (state:windows))
    #:on-resize     (lambda (width height)
                      (when (and (> width 0) (> height 0))
                        (set-box! state:previous-frame-size (unbox state:frame-size))

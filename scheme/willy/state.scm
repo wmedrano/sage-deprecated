@@ -36,13 +36,13 @@
 (define* frame-resize-hook (make-hook 2))
 
 ;; Called for each event. The event is the only argument to the hook.
-(define event-hook (make-hook 1))
+(define* event-hook (make-hook 1))
 
 ;; Called when a window gains focus.
-(define window-focus-hook (make-hook 1))
+(define* window-focus-hook (make-hook 1))
 
 ;; Called when a window loses focus.
-(define window-unfocus-hook (make-hook 1))
+(define* window-unfocus-hook (make-hook 1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Buffers
@@ -81,7 +81,11 @@
     (tui:delete-tui (unbox tui))
     (set-box! tui #f)))
 
-(define* windows
+(define* (windows)
+  "Get all the registered windows."
+  (unbox windows-box))
+
+(define* windows-box
   (box
    (let ((width  (assoc-ref (unbox frame-size) 'width))
          (height (assoc-ref (unbox frame-size) 'height)))
@@ -129,15 +133,15 @@ The focused window is the one with the focused? feature."
 (define* (buffer-for-focused-window)
   "Get the buffer for the currently focused window."
   (and-let* ((w (focused-window)))
-    (window:window-bufer w)))
+    (window:window-buffer w)))
 
 (define* (retain-windows! pred)
   "Remove all windows that do not pass the predicate."
-  (set-box! windows
-            (filter pred (unbox windows))))
+  (set-box! windows-box
+            (filter pred (windows))))
 
 (define* (add-window! window #:key (set-focus? #f))
   "Add window to the set of windows."
-  (set-box! windows (cons window (unbox windows)))
+  (set-box! windows (cons window (windows)))
   (when set-focus?
     (set-focused-window! window)))
