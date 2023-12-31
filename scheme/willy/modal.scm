@@ -1,20 +1,25 @@
 (define-module (willy modal)
   #:export (run-modal!))
 (use-modules ((willy state)       #:prefix state:)
+             ((willy core log) #:select (log!))
              ((willy core buffer) #:prefix buffer:)
              ((willy core window) #:prefix window:)
              ((srfi srfi-1))
              ((srfi srfi-2))
              ((srfi srfi-111)))
 
-(define* (run-modal! #:key modal-name prompt items on-select)
-  "Run a modal that executes on-select when an item is selected."
-  (state:add-task! (lambda () (run-modal-impl! modal-name prompt items on-select))))
+(define* (run-modal! #:key
+                     modal-name
+                     prompt
+                     items
+                     on-select)
+  "Run a modal interactively select an item from items.
 
-(define* (run-modal-impl! modal-name
-                          prompt
-                          items
-                          on-select)
+modal-name - A unique name for this modal.
+prompt     - Prompt to ask user for item.
+items      - The list of items to select from.
+on-select  - Procedure that takes three arguments once the user has
+             selected a choice. The arguments are (window query item)"
   (let* ((frame-size    (unbox state:frame-size))
          (frame-width   (assoc-ref frame-size 'width))
          (frame-height  (assoc-ref frame-size 'height))
@@ -33,9 +38,15 @@
          (query         "")
          (restore-hook  (make-hook)))
     (define (restore!)
-      (run-hook restore-hook))
+      (add-hook! state:post-event-hook
+                 (lambda () (run-hook restore-hook))))
     (define (item->str item)
       (string-concatenate (list " " item "\n")))
+    (define (select-match!)
+      (and-let* ((valid? (pair? matches))
+                 (item   (car matches)))
+        (on-select target-window query item)
+        (restore!)))
     (define (update-query! new-query)
       (set! query new-query)
       (set! matches (filter (lambda (item) (string-contains item query))
@@ -50,13 +61,9 @@
                                    (assoc-ref event 'alt?))))
                  (key (assoc-ref event 'key)))
         (cond
-         ((equal? key "\n")
-          (begin (restore!)
-                 (when (pair? matches)
-                   (state:add-task! (lambda ()
-                                      (on-select (car matches)))))))
-         ((equal? key "<esc>")
-          (restore!))
+         ((equal? key "\n") (begin (restore!)
+                                   (add-hook! state:post-event-hook select-match!)))
+         ((equal? key "<esc>") (restore!))
          ((equal? key "<backspace>")
           (unless (equal? (string-length query) 0)
             (update-query! (substring query 0 (- (string-length query) 1)))))

@@ -3,15 +3,15 @@
 (use-modules ((willy state)       #:prefix state:)
              ((willy core buffer) #:prefix buffer:)
              ((willy core window) #:prefix window:)
+             ((willy core log)    #:select (log!))
              ((willy modal)       #:select (run-modal!))
              ((ice-9 ftw)         #:prefix ftw:)
              ((ice-9 textual-ports))
              ((srfi srfi-1))
              ((srfi srfi-2)))
 
-(define (on-select-file file)
-  (and-let* ((window (state:focused-window))
-             (buffer (window:window-buffer window))
+(define (on-select-file window query file)
+  (and-let* ((buffer (window:window-buffer window))
              (text   (call-with-input-file file get-string-all)))
     (buffer:buffer-set-string buffer text)))
 
