@@ -22,7 +22,8 @@
 			 (make-layout   (lambda () '()))
                          (on-resize     (lambda (w h) #f))
 			 (event-pump    (lambda () #f))
-			 (event-handler (lambda (e) #f)))
+			 (event-handler (lambda (e) #f))
+                         (post-event-fn (lambda () #f)))
   "Run the Willy text editor.
 tui - The terminal UI to use.
 should-run-p - Condition to determine if the application should continue running.
@@ -38,6 +39,7 @@ event-handler - A function that handles a single event returned by event-pump."
            (tui:tui-draw tui (make-layout))
            (frame-limiter:limit-frames frame-limiter)
            (handle-all-events event-pump event-handler)
+           (post-event-fn)
            (let ((size (tui:tui-size tui)))
              (when (not (equal? size frame-size))
                (on-resize (assoc-ref size 'width)

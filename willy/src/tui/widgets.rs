@@ -8,10 +8,17 @@ use crate::buffer_content::BufferContent;
 
 use super::theme::ONEDARK_THEME;
 
+#[derive(PartialEq)]
+pub enum HighlightLine {
+    None,
+    Last,
+    Index(usize),
+}
+
 pub struct BufferWidget<'a> {
     pub buffer: &'a BufferContent,
     pub line_numbers: bool,
-    pub highlight_line: bool,
+    pub highlight_line: HighlightLine,
     pub cursor: bool,
     pub border: bool,
 }
@@ -31,7 +38,12 @@ impl<'a> Widget for BufferWidget<'a> {
             area
         };
         let line_idx = 0..area.height as usize;
-        let selected_line = self.buffer.iter_lines().count();
+        let line_count = self.buffer.iter_lines().count();
+        let selected_line_idx = match self.highlight_line {
+            HighlightLine::Index(idx) => idx,
+            _ if line_count > 0 => line_count - 1,
+            _ => 0,
+        };
         let mut cursor_pos = None;
         for (idx, line) in line_idx.zip(self.buffer.iter_lines()) {
             let mut area = Rect {
@@ -41,7 +53,7 @@ impl<'a> Widget for BufferWidget<'a> {
                 height: 1,
             };
             // Line background.
-            if self.highlight_line && selected_line == idx + 1 {
+            if self.highlight_line != HighlightLine::None && selected_line_idx == idx {
                 Block::new().bg(ONEDARK_THEME.black3).render(area, buf);
             } else {
                 Block::new().bg(ONEDARK_THEME.black1).render(area, buf);
@@ -72,7 +84,7 @@ impl<'a> Widget for BufferWidget<'a> {
                 continue;
             }
             // Cursor
-            if self.cursor && selected_line == idx + 1 {
+            if self.cursor && selected_line_idx == idx {
                 cursor_pos = Some((area.x, area.y));
             }
         }

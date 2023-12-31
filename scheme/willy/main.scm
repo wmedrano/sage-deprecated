@@ -23,14 +23,15 @@
   (event:run-event-loop
    #:tui           (unbox state:tui)
    #:should-run-p  (lambda () (unbox state:tui))
-   #:make-layout   (lambda () (unbox state:windows))
+   #:make-layout   (lambda () (state:windows))
    #:on-resize     (lambda (width height)
                      (when (and (> width 0) (> height 0))
                        (set-box! state:previous-frame-size (unbox state:frame-size))
                        (set-box! state:frame-size `((width . ,width) (height . ,height)))
                        (run-hook state:frame-resize-hook width height)))
    #:event-pump    event:next-event-from-terminal
-   #:event-handler (lambda (e) (run-hook state:event-hook e)))
+   #:event-handler (lambda (e) (run-hook state:event-hook e))
+   #:post-event-fn state:run-tasks!)
   ;; Just in case quit was not called and we need to clean up.
   (state:quit!))
 

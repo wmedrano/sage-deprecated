@@ -44,6 +44,14 @@ impl Scm {
         Scm::from(ffi::scm_eq_p(self.0, other.0)).to_bool()
     }
 
+    /// Equivalent to (number? self).
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn is_number(&self) -> bool {
+        Scm::from(ffi::scm_number_p(self.0)).to_bool()
+    }
+
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn new_bool(b: bool) -> Scm {

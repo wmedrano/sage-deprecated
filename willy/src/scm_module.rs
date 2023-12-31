@@ -6,6 +6,7 @@ use std::{ffi::CStr, panic::catch_unwind};
 use crate::buffer_content::{BufferContent, EMPTY_BUFFER_CONTENT};
 use crate::frame_limiter::FrameLimiter;
 use crate::scm_object_cache::cache;
+use crate::tui::widgets::HighlightLine;
 use crate::tui::{next_event, widgets::BufferWidget, BackendType, Tui, Window};
 use crossterm::event;
 use flashkick::{
@@ -217,7 +218,7 @@ unsafe fn scm_widget_to_widget(widget: Scm) -> Window<'static> {
     let mut ret = BufferWidget {
         buffer: &EMPTY_BUFFER_CONTENT,
         line_numbers: false,
-        highlight_line: false,
+        highlight_line: HighlightLine::None,
         cursor: false,
         border: false,
     };
@@ -250,7 +251,13 @@ unsafe fn scm_widget_to_widget(widget: Scm) -> Window<'static> {
                             ret.line_numbers = feature_value.to_bool()
                         }
                         f if f.is_eq(cache().symbols.highlight_line) => {
-                            ret.highlight_line = feature_value.to_bool()
+                            ret.highlight_line = if feature_value.is_number() {
+                                HighlightLine::Index(feature_value.to_u32() as usize)
+                            } else if feature_value.to_bool() {
+                                HighlightLine::Last
+                            } else {
+                                HighlightLine::None
+                            };
                         }
                         f if f.is_eq(cache().symbols.cursor) => {
                             ret.cursor = feature_value.to_bool()
