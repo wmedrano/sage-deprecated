@@ -16,11 +16,11 @@ run:
 
 run-release:
 	cargo build --release
-	LD_LIBRARY_PATH=target/release GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} guile config.scm -e main
+	LD_LIBRARY_PATH=target/release GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} guile -l config.scm -e main
 
 flamegraph-profile:
 	cargo build --release
-	LD_LIBRARY_PATH=target/release GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} flamegraph -- guile config.scm
+	LD_LIBRARY_PATH=target/release GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} flamegraph -- guile -l config.scm -e main
 
 # Test
 test:

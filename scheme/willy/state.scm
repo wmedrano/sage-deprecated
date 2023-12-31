@@ -5,10 +5,12 @@
             frame-resize-hook
             window-focus-hook
             window-unfocus-hook
-
+            run-tasks!
+            add-task!
             buffer-by-name
             buffer-for-focused-window
             frame-size
+            remove-window!
             retain-windows!
             set-focused-window!
             add-window!
@@ -43,6 +45,23 @@
 
 ;; Called when a window loses focus.
 (define* window-unfocus-hook (make-hook 1))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tasks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define tasks-box (box '()))
+
+(define* (run-tasks!)
+  "Run all queued tasks."
+  (and-let* ((tasks (unbox tasks-box))
+             (has-tasks (pair? tasks)))
+    (for-each (lambda (t) (t))
+              tasks)
+    (set-box! tasks-box '())))
+
+(define* (add-task! task-fn)
+  "Adds a new task that will be run once."
+  (set-box! tasks-box (cons task-fn (unbox tasks-box))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Buffers
@@ -91,7 +110,8 @@
          (height (assoc-ref (unbox frame-size) 'height)))
      (list
       (window:make-window #:buffer   (buffer-by-name "*status*")
-                          #:features '((status-bar? . #t))
+                          #:features '((status-bar?    . #t)
+                                       (highlight-line . 0))
                           #:x        0
                           #:y        (- height 1)
                           #:width    width
@@ -140,8 +160,12 @@ The focused window is the one with the focused? feature."
   (set-box! windows-box
             (filter pred (windows))))
 
+(define* (remove-window! window)
+  "Remove the given window."
+  (retain-windows! (lambda (w) (not (eq? w window)))))
+
 (define* (add-window! window #:key (set-focus? #f))
   "Add window to the set of windows."
-  (set-box! windows (cons window (windows)))
+  (set-box! windows-box (cons window (windows)))
   (when set-focus?
     (set-focused-window! window)))

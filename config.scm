@@ -20,8 +20,8 @@
 Based on the event, it may insert or delete characters from the
 focused window buffer."
   (and-let* ((w  (state:focused-window))
-             (b (window:window-buffer w))
              (editable? (window:window-feature w 'editable?))
+             (b (window:window-buffer w))
              (key (assoc-ref event 'key)))
     (let ((ctrl? (assoc-ref event 'ctrl?))
           (alt?  (assoc-ref event 'alt?))
