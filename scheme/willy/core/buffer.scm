@@ -30,11 +30,13 @@
   (internal:--buffer-content-to-string (buffer-content buffer)))
 
 (define* (buffer-pop-char buffer #:optional line-number)
-  "Pop a character from buffer-content."
+  "Pop a character from buffer-content and return it."
   (internal:--buffer-content-pop-char (buffer-content buffer) line-number))
 
 (define* (buffer-insert-string buffer string #:optional line-number)
-  "Insert string into the contents of buffer."
+  "Insert string into the contents of buffer.
+
+Note: string can be a string or a character."
   (internal:--buffer-content-insert-string (buffer-content buffer) string line-number)
   buffer)
 

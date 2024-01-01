@@ -2,11 +2,11 @@
   #:export (
             ;; Hooks
             event-hook
+            post-event-hook
             frame-resize-hook
             window-focus-hook
             window-unfocus-hook
-            run-tasks!
-            add-task!
+
             buffer-by-name
             buffer-for-focused-window
             frame-size
@@ -40,28 +40,17 @@
 ;; Called for each event. The event is the only argument to the hook.
 (define* event-hook (make-hook 1))
 
+;; Called once after all the event hooks have run.
+;;
+;; This hook is cleared after each run. This means that functions ;;
+;; added to this hook will only be run once.
+(define* post-event-hook (make-hook))
+
 ;; Called when a window gains focus.
 (define* window-focus-hook (make-hook 1))
 
 ;; Called when a window loses focus.
 (define* window-unfocus-hook (make-hook 1))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Tasks
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define tasks-box (box '()))
-
-(define* (run-tasks!)
-  "Run all queued tasks."
-  (and-let* ((tasks (unbox tasks-box))
-             (has-tasks (pair? tasks)))
-    (for-each (lambda (t) (t))
-              tasks)
-    (set-box! tasks-box '())))
-
-(define* (add-task! task-fn)
-  "Adds a new task that will be run once."
-  (set-box! tasks-box (cons task-fn (unbox tasks-box))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Buffers
