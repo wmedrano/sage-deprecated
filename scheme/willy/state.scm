@@ -86,7 +86,7 @@
   "Exit/quit out of Willy."
   (when (unbox tui)
     (log! "Quitting Willy!")
-    (tui:delete-tui (unbox tui))
+    (tui:delete-tui! (unbox tui))
     (set-box! tui #f)))
 
 (define* (windows)

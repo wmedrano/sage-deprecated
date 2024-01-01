@@ -2,12 +2,12 @@
   #:export (
             make-window
             window-set-position!
+            window-set-feature!
             window-buffer
             window-feature
             ))
 (use-modules (srfi srfi-1)
-             (srfi srfi-2)
-             (ice-9 hash-table))
+             (srfi srfi-2))
 
 (define* (make-window #:key
                       buffer

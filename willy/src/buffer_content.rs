@@ -32,44 +32,32 @@ impl BufferContent {
     }
 
     /// Add a new character to the buffer.
-    pub fn push_char(&mut self, ch: char, line: Option<usize>) {
+    pub fn push_char(&mut self, ch: char) {
         if self.lines.is_empty() {
             self.lines.push(String::new());
         }
-        let line = line
-            .unwrap_or(self.lines.len() - 1)
-            .min(self.lines.len() - 1);
-        if ch == '\n' {
-            self.lines.insert(line + 1, String::new());
-            return;
+        match ch {
+            '\n' => self.lines.push(String::new()),
+            ch => self.lines.last_mut().unwrap().push(ch),
         }
-        self.lines.get_mut(line).unwrap().push(ch)
     }
 
     /// Push several characters onto the buffer.
-    pub fn push_chars(&mut self, chs: impl IntoIterator<Item = char>, line: Option<usize>) {
+    pub fn push_chars(&mut self, chs: impl IntoIterator<Item = char>) {
         for ch in chs.into_iter() {
-            self.push_char(ch, line);
+            self.push_char(ch);
         }
     }
 
     /// Pop a character from the buffer or `None` if the buffer is empty.
-    pub fn pop_char(&mut self, line: Option<usize>) -> Option<char> {
-        if self.lines.is_empty() {
-            return None;
-        }
-        let line_idx = line
-            .unwrap_or(self.lines.len() - 1)
-            .min(self.lines.len() - 1);
-        let line = self.lines.get_mut(line_idx).unwrap();
-        match line.pop() {
-            Some(ch) => Some(ch),
-            None if line_idx > 0 => {
-                self.lines.remove(line_idx);
-                Some('\n')
-            }
-            None => None,
-        }
+    pub fn pop_char(&mut self) -> Option<char> {
+        let line = self.lines.iter_mut().last()?;
+        line.pop()
+    }
+
+    /// Clear the contents of the buffer.
+    pub fn clear(&mut self) {
+        self.lines.clear();
     }
 }
 
@@ -94,22 +82,15 @@ mod tests {
     fn push_char_adds_new_char() {
         let mut buffer = BufferContent::new();
         assert_eq!(buffer.to_string(), "");
-        buffer.push_char('a', None);
+        buffer.push_char('a');
         assert_eq!(buffer.to_string(), "a");
     }
 
     #[test]
     fn push_chars_adds_new_chars() {
         let mut buffer = BufferContent::new();
-        buffer.push_chars(['a', 'b', 'c', 'd', '\n', 'e', '\n'], None);
+        buffer.push_chars(['a', 'b', 'c', 'd', '\n', 'e', '\n']);
         assert_eq!(buffer.to_string(), "abcd\ne\n");
-    }
-
-    #[test]
-    fn push_chars_with_line_index_pushes_to_that_line() {
-        let mut buffer = BufferContent::with_str("1:\n2:\n3:\n");
-        buffer.push_chars(" first line".chars(), Some(0));
-        assert_eq!(buffer.to_string(), "1: first line\n2:\n3:\n");
     }
 
     #[test]
@@ -117,24 +98,24 @@ mod tests {
         let mut buffer = BufferContent::with_str("name: ");
         assert_eq!(buffer.to_string(), "name: ");
 
-        buffer.push_chars(['w', 'i', 'l', 'l', 'y'], None);
+        buffer.push_chars(['w', 'i', 'l', 'l', 'y']);
         assert_eq!(buffer.to_string(), "name: willy");
 
-        buffer.push_chars("\nfunction: editor".chars(), None);
+        buffer.push_chars("\nfunction: editor".chars());
         assert_eq!(buffer.to_string(), "name: willy\nfunction: editor");
     }
 
     #[test]
     fn pop_char_on_empty_buffer_is_none() {
         let mut buffer = BufferContent::new();
-        assert_eq!(buffer.pop_char(None), None);
+        assert_eq!(buffer.pop_char(), None);
     }
 
     #[test]
     fn pop_char_removes_last_char() {
         let mut buffer = BufferContent::with_str("typoo");
         assert_eq!(buffer.to_string(), "typoo");
-        assert_eq!(buffer.pop_char(None), Some('o'));
+        assert_eq!(buffer.pop_char(), Some('o'));
         assert_eq!(buffer.to_string(), "typo");
     }
 }

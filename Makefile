@@ -7,8 +7,8 @@ build-rust:
 	cargo build
 
 build-scheme:
-	LD_LIBRARY_PATH=target/debug guild compile config.scm
-	LD_LIBRARY_PATH=target/debug find scheme -type f -name "*.scm" -exec guild compile {} \;
+	LD_LIBRARY_PATH=target/debug GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} guild compile config.scm
+	LD_LIBRARY_PATH=target/debug GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} find scheme -type f -name "*.scm" -exec guild compile {} \;
 
 # Run
 run:

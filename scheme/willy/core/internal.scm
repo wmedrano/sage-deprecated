@@ -2,7 +2,7 @@
   #:export (
             --buffer-content-insert-string
             --buffer-content-pop-char
-            --buffer-content-set-string
+            --buffer-content-clear
             --buffer-content-to-string
             --delete-tui
             --limit-frames

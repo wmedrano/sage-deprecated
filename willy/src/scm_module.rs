@@ -35,17 +35,17 @@ impl Module for WillyCoreInternalModule {
             scm_buffer_content_to_string,
             1,
         );
-        ctx.define_subr_3(
+        ctx.define_subr_2(
             CStr::from_bytes_with_nul(b"--buffer-content-insert-string\0").unwrap(),
             scm_buffer_content_insert_string,
             2,
         );
-        ctx.define_subr_2(
-            CStr::from_bytes_with_nul(b"--buffer-content-set-string\0").unwrap(),
-            scm_buffer_content_set_string,
-            2,
+        ctx.define_subr_1(
+            CStr::from_bytes_with_nul(b"--buffer-content-clear\0").unwrap(),
+            scm_buffer_content_clear,
+            1,
         );
-        ctx.define_subr_2(
+        ctx.define_subr_1(
             CStr::from_bytes_with_nul(b"--buffer-content-pop-char\0").unwrap(),
             scm_buffer_content_pop_char,
             1,
@@ -110,45 +110,32 @@ extern "C" fn scm_buffer_content_to_string(buffer: Scm) -> Scm {
     unsafe { Scm::new_string(&s) }
 }
 
-extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm, line: Scm) -> Scm {
-    let line = if line.is_undefined() || !unsafe { line.to_bool() } {
-        None
-    } else {
-        Some(unsafe { line.to_u64() } as usize)
-    };
+extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm) -> Scm {
     let b = match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
         None => return buffer_content,
     };
     if unsafe { string.is_char() } {
-        b.push_chars(unsafe { string.to_char() }, line);
+        b.push_chars(unsafe { string.to_char() });
     } else {
-        b.push_chars(unsafe { string.to_string() }.chars(), line);
+        b.push_chars(unsafe { string.to_string() }.chars());
     }
     buffer_content
 }
 
-extern "C" fn scm_buffer_content_set_string(scm_buffer_content: Scm, string: Scm) -> Scm {
-    let buffer_content = match unsafe { BufferContent::from_scm(scm_buffer_content).as_mut() } {
-        Some(b) => b,
-        None => return scm_buffer_content,
-    };
-    let s = unsafe { string.to_string() };
-    *buffer_content = BufferContent::with_str(&s);
+extern "C" fn scm_buffer_content_clear(scm_buffer_content: Scm) -> Scm {
+    if let Some(bc) = unsafe { BufferContent::from_scm(scm_buffer_content).as_mut() } {
+        bc.clear();
+    }
     scm_buffer_content
 }
 
-extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm, line_number: Scm) -> Scm {
+extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm) -> Scm {
     let bc = match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
         None => return Scm::FALSE,
     };
-    let line_number = if line_number.is_undefined() || !unsafe { line_number.to_bool() } {
-        None
-    } else {
-        Some(unsafe { line_number.to_u64() } as usize)
-    };
-    match bc.pop_char(line_number) {
+    match bc.pop_char() {
         Some(c) => unsafe { Scm::new_char(c) },
         None => Scm::FALSE,
     }

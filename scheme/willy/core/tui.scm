@@ -1,6 +1,6 @@
 (define-module (willy core tui)
   #:export (
-            delete-tui
+            delete-tui!
             main-tui
             make-tui
             tui-draw
@@ -17,7 +17,7 @@ backend-type must be either 'terminal or 'test. If not set, then 'test
 will be used."
   (internal:--make-tui (or backend-type 'test)))
 
-(define* (delete-tui tui)
+(define* (delete-tui! tui)
   "Delete a terminal UI."
   (internal:--delete-tui tui))
 

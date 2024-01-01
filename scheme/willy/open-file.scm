@@ -13,7 +13,7 @@
 (define (on-select-file window query file)
   (and-let* ((buffer (window:window-buffer window))
              (text   (call-with-input-file file get-string-all)))
-    (buffer:buffer-set-string buffer text)))
+    (buffer:buffer-set-string! buffer text)))
 
 (define* (open-file!)
   "Open a new file on the current window."

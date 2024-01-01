@@ -14,10 +14,10 @@
         x
         (object->string x)))
   (define (output x)
-    (buffer:buffer-insert-string log-buffer
+    (buffer:buffer-insert-string! log-buffer
                                  (stringify x)))
-  (buffer:buffer-insert-string log-buffer #\[)
-  (buffer:buffer-insert-string log-buffer t)
-  (buffer:buffer-insert-string log-buffer "]: ")
+  (buffer:buffer-insert-string! log-buffer #\[)
+  (buffer:buffer-insert-string! log-buffer t)
+  (buffer:buffer-insert-string! log-buffer "]: ")
   (for-each output vals)
-  (buffer:buffer-insert-string log-buffer #\newline))
+  (buffer:buffer-insert-string! log-buffer #\newline))

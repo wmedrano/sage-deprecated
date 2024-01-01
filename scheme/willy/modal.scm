@@ -74,10 +74,10 @@ on-select  - Procedure that takes three arguments once the user has
 (define* (reset-buffer! buffer prompt query items)
   "Reset the contents of buffer to represent the given prompt with the
 given items."
-  (buffer:buffer-set-string buffer
+  (buffer:buffer-set-string! buffer
                             (string-concatenate (list prompt query "\n")))
   (for-each (lambda (item)
-              (buffer:buffer-insert-string buffer (item->string item)))
+              (buffer:buffer-insert-string! buffer (item->string item)))
             items))
 
 (define* (item->string item)

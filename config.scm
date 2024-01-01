@@ -27,9 +27,9 @@ focused window buffer."
           (alt?  (assoc-ref event 'alt?)))
       (cond
        ((and (not ctrl?) (not alt?) (char? key))
-        (buffer:buffer-insert-string b key))
+        (buffer:buffer-insert-string! b key))
        ((and (not ctrl?) (not alt?) (equal? key event:backspace-key))
-        (buffer:buffer-pop-char b))))))
+        (buffer:buffer-pop-char! b))))))
 
 (define* (handle-ctrl-keys event)
   "Handle any operations having to do with the ctrl keys."

@@ -6,7 +6,7 @@
 
 (test-equal "New buffers have empty tests."
   ""
-  (buffer-to-string (make-buffer)))
+  (buffer->string (make-buffer)))
 
 (test-equal "Make buffer with name has valid name"
   "my custom name"
@@ -14,32 +14,38 @@
 
 (test-equal "New buffers have empty tests."
   ""
-  (buffer-to-string (make-buffer)))
+  (buffer->string (make-buffer)))
 
 (test-equal "Make buffer with string has valid string"
   "my text"
-  (buffer-to-string (make-buffer #:string "my text")))
+  (buffer->string (make-buffer #:string "my text")))
 
 (test-equal "Can insert string to buffer."
   "name: Willy\n"
-  (buffer-to-string
-   (buffer-insert-string (make-buffer #:string "name: ")
+  (buffer->string
+   (buffer-insert-string! (make-buffer #:string "name: ")
                          "Willy\n")))
 
 (test-equal "Can insert char to buffer."
   "Hello World!"
-  (buffer-to-string
-   (buffer-insert-string (make-buffer #:string "Hello World")
+  (buffer->string
+   (buffer-insert-string! (make-buffer #:string "Hello World")
                          #\!)))
 
-(test-equal "buffer-pop-char removes last character."
+(test-equal "buffer-pop-char! removes last character."
   "my tex"
   (let ((b (make-buffer #:string "my text")))
-    (buffer-pop-char b)
-    (buffer-to-string b)))
+    (buffer-pop-char! b)
+    (buffer->string b)))
 
-(test-equal "buffer-pop-char returns last character."
+(test-equal "buffer-pop-char! returns last character."
   #\t
-  (buffer-pop-char (make-buffer #:string "my text")))
+  (buffer-pop-char! (make-buffer #:string "my text")))
+
+(test-equal "buffer-clear! clears the buffer"
+  ""
+  (let ((b (make-buffer #:string "Delete me.")))
+    (buffer-clear! b)
+    (buffer->string b)))
 
 (test-end %test-suite-name)
