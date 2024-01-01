@@ -12,3 +12,5 @@ crossterm = "0.27"
 flashkick = { path = "../flashkick"}
 indoc = "2"
 ratatui = "0.25"
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"
