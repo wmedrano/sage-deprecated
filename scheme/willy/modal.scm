@@ -1,8 +1,9 @@
 (define-module (willy modal)
   #:export (run-modal!))
 (use-modules ((willy state)       #:prefix state:)
-             ((willy core log) #:select (log!))
+             ((willy core log)    #:select (log!))
              ((willy core buffer) #:prefix buffer:)
+             ((willy core event)  #:prefix event:)
              ((willy core window) #:prefix window:)
              ((srfi srfi-1))
              ((srfi srfi-2))
@@ -37,26 +38,20 @@ on-select  - Procedure that takes three arguments once the user has
          (matches       all-items)
          (query         "")
          (restore-hook  (make-hook)))
+    (define (update-query! new-query)
+      (set! query new-query)
+      (set! matches (filter-by-query all-items new-query))
+      (reset-buffer! buffer prompt query matches))
+    (update-query! "")
     (define (restore!)
       (add-hook! state:post-event-hook
                  (lambda () (run-hook restore-hook))))
-    (define (item->str item)
-      (string-concatenate (list " " item "\n")))
     (define (select-match!)
       (and-let* ((valid? (pair? matches))
                  (item   (car matches)))
         (on-select target-window query item)
         (restore!)))
-    (define (update-query! new-query)
-      (set! query new-query)
-      (set! matches (filter (lambda (item) (string-contains item query))
-                            all-items))
-      (buffer:buffer-set-string buffer
-                                (string-concatenate (list prompt query "\n")))
-      (for-each (lambda (item) (buffer:buffer-insert-string buffer (item->str item)))
-                matches))
-    (update-query! query)
-    (define (handle-event event)
+    (define (handle-event! event)
       (and-let* ((no-mod? (not (or (assoc-ref event 'ctrl?)
                                    (assoc-ref event 'alt?))))
                  (key (assoc-ref event 'key)))
@@ -67,11 +62,35 @@ on-select  - Procedure that takes three arguments once the user has
          ((equal? key "<backspace>")
           (unless (equal? (string-length query) 0)
             (update-query! (substring query 0 (- (string-length query) 1)))))
-         (else
+         ((not (event:special-key? key))
           (update-query! (string-concatenate (list query key)))))))
-    (add-hook! state:event-hook handle-event #t)
-    (add-hook! restore-hook (lambda () (remove-hook! state:event-hook handle-event)))
+    (add-hook! state:event-hook handle-event! #t)
+    (add-hook! restore-hook (lambda () (remove-hook! state:event-hook handle-event!)))
     (state:add-window! window #:set-focus? #t)
     (add-hook! restore-hook (lambda ()
                               (state:remove-window! window)
                               (state:set-focused-window! target-window)))))
+
+(define* (reset-buffer! buffer prompt query items)
+  "Reset the contents of buffer to represent the given prompt with the
+given items."
+  (buffer:buffer-set-string buffer
+                            (string-concatenate (list prompt query "\n")))
+  (for-each (lambda (item)
+              (buffer:buffer-insert-string buffer (item->string item)))
+            items))
+
+(define* (item->string item)
+  "Convert an item to its string representation."
+  (string-concatenate (list " " item "\n")))
+
+(define* (item-matches-query? subqueries-lst item)
+  "Returns #t if the item is a match for all strings in subqueries-lst."
+  (every (lambda (sub-query) (string-contains item sub-query))
+         subqueries-lst))
+
+(define* (filter-by-query items query)
+  "Returns all items that match the given query."
+  (let ((subqueries-lst (string-split query #\space)))
+    (filter (lambda (item) (item-matches-query? subqueries-lst item))
+            items)))
