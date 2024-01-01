@@ -4,7 +4,6 @@
             list->event-pump
             next-event-from-terminal
             run-event-loop
-            special-key?
             ))
 (use-modules
  ((willy core tui)           #:prefix tui:)
@@ -65,9 +64,3 @@ event-handler - A function that handles a single event returned by event-pump."
     (when event
       (event-handler event)
       (handle-single-event (event-pump)))))
-
-(define* (special-key? key)
-  "Returns #t if key is not a normal character.
-
-Example special key: <backspace>"
-  (> (string-length key) 1))

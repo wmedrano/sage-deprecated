@@ -116,11 +116,15 @@ extern "C" fn scm_buffer_content_insert_string(buffer_content: Scm, string: Scm,
     } else {
         Some(unsafe { line.to_u64() } as usize)
     };
-    match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
+    let b = match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
         None => return buffer_content,
+    };
+    if unsafe { string.is_char() } {
+        b.push_chars(unsafe { string.to_char() }, line);
+    } else {
+        b.push_chars(unsafe { string.to_string() }.chars(), line);
     }
-    .push_chars(unsafe { string.to_string() }.chars(), line);
     buffer_content
 }
 
@@ -137,7 +141,7 @@ extern "C" fn scm_buffer_content_set_string(scm_buffer_content: Scm, string: Scm
 extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm, line_number: Scm) -> Scm {
     let bc = match unsafe { BufferContent::from_scm(buffer_content).as_mut() } {
         Some(b) => b,
-        None => return unsafe { Scm::new_string("") },
+        None => return Scm::FALSE,
     };
     let line_number = if line_number.is_undefined() || !unsafe { line_number.to_bool() } {
         None
@@ -145,11 +149,8 @@ extern "C" fn scm_buffer_content_pop_char(buffer_content: Scm, line_number: Scm)
         Some(unsafe { line_number.to_u64() } as usize)
     };
     match bc.pop_char(line_number) {
-        Some(c) => unsafe {
-            let mut tmp_buffer = [0u8; 16];
-            Scm::new_string(c.encode_utf8(&mut tmp_buffer))
-        },
-        None => unsafe { Scm::new_string("") },
+        Some(c) => unsafe { Scm::new_char(c) },
+        None => Scm::FALSE,
     }
 }
 
@@ -316,17 +317,16 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
             modifiers,
             ..
         }) => {
-            let mut tmp_ch_buffer = [0u8; 4];
             let key = match code {
-                event::KeyCode::Char(ch) => ch.encode_utf8(&mut tmp_ch_buffer),
-                event::KeyCode::Enter => '\n'.encode_utf8(&mut tmp_ch_buffer),
-                event::KeyCode::Tab => '\t'.encode_utf8(&mut tmp_ch_buffer),
-                event::KeyCode::Backspace => "<backspace>",
-                event::KeyCode::Down => "<down>",
-                event::KeyCode::Esc => "<esc>",
-                event::KeyCode::Left => "<left>",
-                event::KeyCode::Right => "<right>",
-                event::KeyCode::Up => "<up>",
+                event::KeyCode::Char(ch) => Scm::new_char(ch),
+                event::KeyCode::Enter => Scm::new_char('\n'),
+                event::KeyCode::Tab => Scm::new_char('\t'),
+                event::KeyCode::Backspace => Scm::new_string("<backspace>"),
+                event::KeyCode::Down => Scm::new_string("<down>"),
+                event::KeyCode::Esc => Scm::new_string("<esc>"),
+                event::KeyCode::Left => Scm::new_string("<left>"),
+                event::KeyCode::Right => Scm::new_string("<right>"),
+                event::KeyCode::Up => Scm::new_string("<up>"),
                 _ => return None,
             };
             let event_type = match kind {
@@ -338,7 +338,7 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
             };
             let alist = [
                 (cache().symbols.event_type, event_type),
-                (cache().symbols.key, Scm::new_string(key)),
+                (cache().symbols.key, key),
                 (
                     cache().symbols.shift_question,
                     Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),

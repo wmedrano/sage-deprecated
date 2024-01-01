@@ -52,6 +52,14 @@ impl Scm {
         Scm::from(ffi::scm_number_p(self.0)).to_bool()
     }
 
+    /// Equivalent to (char? self).
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn is_char(&self) -> bool {
+        Scm::from(ffi::scm_char_p(self.0)).to_bool()
+    }
+
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn new_bool(b: bool) -> Scm {
@@ -147,6 +155,20 @@ impl Scm {
     /// Makes calls to C.
     pub unsafe fn new_cons(x: Scm, y: Scm) -> Scm {
         ffi::scm_cons(x.0, y.0).into()
+    }
+
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn new_char(ch: char) -> Scm {
+        ffi::scm_c_make_char(u32::from(ch) as i32).into()
+    }
+
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn to_char(self) -> Option<char> {
+        let ch_scm_int: Scm = ffi::scm_char_to_integer(self.0).into();
+        let ch_int = ch_scm_int.to_u32();
+        char::from_u32(ch_int)
     }
 
     /// # Safety
@@ -371,8 +393,11 @@ mod tests {
     fn type_conversions_are_equal_before_and_after() {
         unsafe {
             boot_guile(std::iter::empty(), || {
+                // Bool
                 assert!(Scm::new_bool(true).to_bool());
                 assert!(!Scm::new_bool(false).to_bool());
+
+                // Numbers
                 assert_eq!(Scm::new_u8(1).to_u8(), 1);
                 assert_eq!(Scm::new_i8(-2).to_i8(), -2);
                 assert_eq!(Scm::new_u16(3).to_u16(), 3);
@@ -383,10 +408,21 @@ mod tests {
                 assert_eq!(Scm::new_i64(-8).to_i64(), -8);
                 assert_eq!(Scm::new_f64(9.5).to_f64(), 9.5);
                 assert_eq!(Scm::new_f64(-10.5).to_f64(), -10.5);
+
+                // Strings/Chars
                 assert_eq!(
                     Scm::new_string("my string").to_string(),
                     "my string".to_string()
                 );
+                assert_eq!(Scm::new_char('a').to_char(), Some('a'));
+                assert_eq!(Scm::new_char('\n').to_char(), Some('\n'));
+                assert_eq!(Scm::new_char(char::MAX).to_char(), Some(char::MAX));
+                assert_eq!(
+                    Scm::new_char(char::REPLACEMENT_CHARACTER).to_char(),
+                    Some(char::REPLACEMENT_CHARACTER)
+                );
+
+                // Symbols/Keywords
                 assert_eq!(
                     Scm::new_symbol("my symbol").to_symbol(),
                     "my symbol".to_string()
@@ -434,6 +470,8 @@ mod tests {
                 assert!(Scm::new_i64(-8).to_bool());
                 assert!(Scm::new_f64(9.5).to_bool());
                 assert!(Scm::new_f64(-10.5).to_bool());
+                assert!(Scm::new_string("").to_bool());
+                assert!(Scm::new_char(char::MAX).to_bool());
             });
         }
     }

@@ -23,9 +23,14 @@
 (test-equal "Can insert string to buffer."
   "name: Willy\n"
   (buffer-to-string
-   (buffer-insert-string
-    (make-buffer #:string "name: ")
-    "Willy\n")))
+   (buffer-insert-string (make-buffer #:string "name: ")
+                         "Willy\n")))
+
+(test-equal "Can insert char to buffer."
+  "Hello World!"
+  (buffer-to-string
+   (buffer-insert-string (make-buffer #:string "Hello World")
+                         #\!)))
 
 (test-equal "buffer-pop-char removes last character."
   "my tex"
@@ -34,7 +39,7 @@
     (buffer-to-string b)))
 
 (test-equal "buffer-pop-char returns last character."
-  "t"
+  #\t
   (buffer-pop-char (make-buffer #:string "my text")))
 
 (test-end %test-suite-name)

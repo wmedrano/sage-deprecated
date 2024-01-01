@@ -24,10 +24,9 @@ focused window buffer."
              (b (window:window-buffer w))
              (key (assoc-ref event 'key)))
     (let ((ctrl? (assoc-ref event 'ctrl?))
-          (alt?  (assoc-ref event 'alt?))
-          (char? (not (event:special-key? key))))
+          (alt?  (assoc-ref event 'alt?)))
       (cond
-       ((and (not ctrl?) (not alt?) char?)
+       ((and (not ctrl?) (not alt?) (char? key))
         (buffer:buffer-insert-string b key))
        ((and (not ctrl?) (not alt?) (equal? key event:backspace-key))
         (buffer:buffer-pop-char b))))))
@@ -38,8 +37,8 @@ focused window buffer."
          (ctrl?      (and (assoc-ref event 'ctrl?)
                           (not (assoc-ref event 'alt?)))))
     (cond
-     ((and ctrl? (equal? key "o")) (open-file!))
-     ((and ctrl? (equal? key "c")) (state:quit!)))))
+     ((and ctrl? (equal? key #\o)) (open-file!))
+     ((and ctrl? (equal? key #\c)) (state:quit!)))))
 
 (define* (reposition-status-bar width height)
   (and-let* ((status-bar-window? (lambda (w) (window:window-feature w 'status-bar?)))
@@ -76,6 +75,7 @@ focused window buffer."
                                    (state:windows)))
   (add-hook! state:event-hook handle-ctrl-keys)
   (add-hook! state:event-hook edit-focused-window-buffer)
+  ;; (add-hook! state:event-hook log!) ;; Noisy, but can be useful for debugging.
 
   (add-hook! state:frame-resize-hook resize-by-proportion)
   ;; Order is important. We want to reposition the status bar as the
