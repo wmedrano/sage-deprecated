@@ -310,6 +310,7 @@ extern "C" fn scm_tui_state_for_test(tui: Scm) -> Scm {
 }
 
 unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
+    let cache = cache();
     match e {
         event::Event::Key(event::KeyEvent {
             code,
@@ -321,34 +322,44 @@ unsafe fn event_to_scm(e: event::Event) -> Option<Scm> {
                 event::KeyCode::Char(ch) => Scm::new_char(ch),
                 event::KeyCode::Enter => Scm::new_char('\n'),
                 event::KeyCode::Tab => Scm::new_char('\t'),
-                event::KeyCode::Backspace => Scm::new_string("<backspace>"),
-                event::KeyCode::Down => Scm::new_string("<down>"),
-                event::KeyCode::Esc => Scm::new_string("<esc>"),
-                event::KeyCode::Left => Scm::new_string("<left>"),
-                event::KeyCode::Right => Scm::new_string("<right>"),
-                event::KeyCode::Up => Scm::new_string("<up>"),
+                event::KeyCode::Backspace => cache.key_codes.backspace,
+                event::KeyCode::Down => cache.key_codes.down,
+                event::KeyCode::Esc => cache.key_codes.esc,
+                event::KeyCode::Left => cache.key_codes.left,
+                event::KeyCode::Right => cache.key_codes.right,
+                event::KeyCode::Up => cache.key_codes.up,
+                event::KeyCode::BackTab => cache.key_codes.back_tab,
+                event::KeyCode::Modifier(
+                    event::ModifierKeyCode::LeftShift | event::ModifierKeyCode::RightShift,
+                ) => cache.key_codes.shift,
+                event::KeyCode::Modifier(
+                    event::ModifierKeyCode::LeftControl | event::ModifierKeyCode::RightControl,
+                ) => cache.key_codes.ctrl,
+                event::KeyCode::Modifier(
+                    event::ModifierKeyCode::LeftAlt | event::ModifierKeyCode::RightAlt,
+                ) => cache.key_codes.alt,
                 _ => return None,
             };
             let event_type = match kind {
-                event::KeyEventKind::Press => cache().symbols.press,
+                event::KeyEventKind::Press => cache.symbols.press,
                 // Consider keeping only press as release and repeat events are not being provided
                 // by crossterm at the moment.
-                event::KeyEventKind::Release => cache().symbols.release,
-                event::KeyEventKind::Repeat => cache().symbols.repeat,
+                event::KeyEventKind::Release => cache.symbols.release,
+                event::KeyEventKind::Repeat => cache.symbols.repeat,
             };
             let alist = [
-                (cache().symbols.event_type, event_type),
-                (cache().symbols.key, key),
+                (cache.symbols.event_type, event_type),
+                (cache.symbols.key, key),
                 (
-                    cache().symbols.shift_question,
+                    cache.symbols.shift_question,
                     Scm::new_bool(modifiers.contains(event::KeyModifiers::SHIFT)),
                 ),
                 (
-                    cache().symbols.ctrl_question,
+                    cache.symbols.ctrl_question,
                     Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL)),
                 ),
                 (
-                    cache().symbols.alt_question,
+                    cache.symbols.alt_question,
                     Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT)),
                 ),
             ]
