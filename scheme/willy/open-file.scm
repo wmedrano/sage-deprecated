@@ -11,9 +11,11 @@
              ((srfi srfi-2)))
 
 (define (on-select-file window query file)
-  (and-let* ((buffer (window:window-buffer window))
-             (text   (call-with-input-file file get-string-all)))
-    (buffer:buffer-set-string! buffer text)))
+  (and-let* ((text   (call-with-input-file file get-string-all))
+             (buffer (buffer:make-buffer #:name file
+                                         #:string text
+                                         #:language (language-for-file file))))
+    (window:window-set-buffer! window buffer)))
 
 (define* (open-file!)
   "Open a new file on the current window."
@@ -34,3 +36,9 @@
          (leaf      (lambda (path stat result)
                       (cons path result))))
     (ftw:file-system-fold enter? leaf down up skip error init file-name)))
+
+(define* (language-for-file path)
+  "Get the language for a file."
+  (cond
+   ((string-contains path ".rs") "rust")
+   (else "")))

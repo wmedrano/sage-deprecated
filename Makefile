@@ -12,6 +12,9 @@ build-scheme:
 
 # Run
 run:
+	LD_LIBRARY_PATH=target/debug GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} guile -l config.scm -e main
+
+run-repl-port:
 	LD_LIBRARY_PATH=target/debug GUILE_LOAD_PATH=./scheme:${GUILE_LOAD_PATH} guile -l config.scm -e main --listen
 
 run-release:

@@ -3,6 +3,7 @@
             make-window
             window-set-position!
             window-set-feature!
+            window-set-buffer!
             window-buffer
             window-feature
             ))
@@ -41,6 +42,10 @@
 (define* (window-buffer window)
   "Get the buffer for the window."
   (assoc-ref window 'buffer))
+
+(define* (window-set-buffer! window buffer)
+  "Set the window's buffer."
+  (assoc-set! window 'buffer buffer))
 
 (define* (window-set-feature! window feature value)
   "Set the feature in window to value."

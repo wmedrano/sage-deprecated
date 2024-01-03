@@ -12,11 +12,16 @@
              ((srfi srfi-1)))
 
 (define* (make-buffer #:key
-                      (name   "*default*")
-                      (string ""))
+                      (name     "*default*")
+                      (string   "")
+                      (language ""))
   "Create a new buffer."
-  `((name . ,name)
-    (content . ,(internal:--buffer-content-insert-string (internal:--make-buffer-content) string))))
+  (let* ((content (internal:--make-buffer-content language))
+         (buffer  `((name    . ,name)
+                    (content . ,content))))
+    (when (> (string-length string) 0)
+      (buffer-insert-string! buffer string))
+    buffer))
 
 (define* (buffer-content buffer)
   "Get the underlying buffer contents object."

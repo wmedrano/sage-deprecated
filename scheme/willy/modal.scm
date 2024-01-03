@@ -41,7 +41,7 @@ on-select  - Procedure that takes three arguments once the user has
     (define (update-query! new-query)
       (set! query new-query)
       (set! matches (filter-by-query all-items new-query))
-      (reset-buffer! buffer prompt query matches))
+      (reset-buffer! buffer prompt query matches (- frame-height 1)))
     (update-query! "")
     (define (restore!)
       (add-hook! state:post-event-hook
@@ -71,14 +71,19 @@ on-select  - Procedure that takes three arguments once the user has
                               (state:remove-window! window)
                               (state:set-focused-window! target-window)))))
 
-(define* (reset-buffer! buffer prompt query items)
+(define* (reset-buffer! buffer prompt query items limit)
   "Reset the contents of buffer to represent the given prompt with the
 given items."
-  (buffer:buffer-set-string! buffer
-                            (string-concatenate (list prompt query "\n")))
-  (for-each (lambda (item)
-              (buffer:buffer-insert-string! buffer (item->string item)))
-            items))
+  (buffer:buffer-set-string!
+   buffer
+   (make-buffer-string buffer prompt query items limit)))
+
+(define* (make-buffer-string buffer prompt query items limit)
+  (let* ((query-line       (string-concatenate (list prompt query)))
+         (lines            (cons query-line items))
+         (final-line-count (min (length lines) limit)))
+    (string-join (take lines final-line-count)
+                 "\n")))
 
 (define* (item->string item)
   "Convert an item to its string representation."
@@ -96,5 +101,6 @@ given items."
             items)))
 
 (define* (string-append-char s c)
+  "Return a string that is s appended by the character c."
   (let ((char-as-string (list->string (list c))))
     (string-concatenate (list s char-as-string))))

@@ -28,6 +28,14 @@ impl Scm {
         self.0 == Self::EOL.0
     }
 
+    /// Equivalent to (string? self).
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn is_string(&self) -> bool {
+        Scm::from(ffi::scm_string_p(self.0)).to_bool()
+    }
+
     /// Equivalent to (equal? self other).
     ///
     /// # Safety

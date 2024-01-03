@@ -26,9 +26,10 @@ impl Module for WillyCoreInternalModule {
 
     unsafe fn define(&self, ctx: &mut ModuleInitContext) {
         ctx.define_type::<BufferContent>();
-        ctx.define_subr_0(
+        ctx.define_subr_1(
             CStr::from_bytes_with_nul(b"--make-buffer-content\0").unwrap(),
             scm_make_buffer_content,
+            1,
         );
         ctx.define_subr_1(
             CStr::from_bytes_with_nul(b"--buffer-content-to-string\0").unwrap(),
@@ -96,8 +97,17 @@ impl Module for WillyCoreInternalModule {
     }
 }
 
-extern "C" fn scm_make_buffer_content() -> Scm {
-    let buffer = Box::new(BufferContent::new());
+extern "C" fn scm_make_buffer_content(language: Scm) -> Scm {
+    let language = if unsafe { language.is_string() } {
+        match unsafe { language.to_string().as_str() } {
+            "rust" => Some(tree_sitter_rust::language()),
+            _ => None,
+        }
+    } else {
+        None
+    };
+    let buffer = Box::new(BufferContent::new(language));
+    // let buffer = Box::new(BufferContent::new(None));
     unsafe { BufferContent::to_scm(buffer) }
 }
 
