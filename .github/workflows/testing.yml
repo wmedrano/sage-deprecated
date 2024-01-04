@@ -31,4 +31,4 @@ jobs:
       - name: Scheme Build
         run: guild compile sage/core/*
       - name: Scheme Test
-        run: guile sage/tests/rope.scm
+        run: guile sage/tests/tests.scm

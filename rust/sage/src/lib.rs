@@ -2,6 +2,7 @@ use std::ffi::CStr;
 
 use flashkick::module::{Module, ModuleInitContext};
 
+mod event;
 pub mod rope;
 mod tui;
 
@@ -15,6 +16,7 @@ impl Module for SageModule {
     unsafe fn define(&self, ctx: &mut ModuleInitContext) {
         rope::define_rope(ctx);
         tui::define_tui(ctx);
+        event::define_event(ctx);
     }
 }
 

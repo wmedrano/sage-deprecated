@@ -64,7 +64,7 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
     );
     ctx.define_subr_4(
         CStr::from_bytes_with_nul(b"rope-replace!\0").unwrap(),
-        scm_rope_insert,
+        scm_rope_replace,
         4,
     );
 }
@@ -83,7 +83,7 @@ extern "C" fn scm_rope_to_string(rope: Scm) -> Scm {
         let rope = RopeWrapper::from_scm(rope).unwrap();
         Scm::new_string(rope.to_string().as_str())
     })
-    .map_err(|_| "Rust panic encountered on make-rope.")
+    .map_err(|_| "Rust panic encountered on rope->string.")
     .scm_unwrap()
 }
 
@@ -92,11 +92,11 @@ extern "C" fn scm_rope_byte_length(rope: Scm) -> Scm {
         let rope = RopeWrapper::from_scm(rope).unwrap();
         Scm::new_u32(rope.byte_len() as u32)
     })
-    .map_err(|_| "Rust panic encountered on make-rope.")
+    .map_err(|_| "Rust panic encountered on rope->byte-length.")
     .scm_unwrap()
 }
 
-extern "C" fn scm_rope_insert(rope: Scm, start_byte: Scm, end_byte: Scm, text: Scm) -> Scm {
+extern "C" fn scm_rope_replace(rope: Scm, start_byte: Scm, end_byte: Scm, text: Scm) -> Scm {
     catch_unwind(|| unsafe {
         let rope = RopeWrapper::from_scm_mut(rope).unwrap();
         let start = start_byte.to_u32() as usize;
@@ -109,7 +109,7 @@ extern "C" fn scm_rope_insert(rope: Scm, start_byte: Scm, end_byte: Scm, text: S
             rope.replace(start..end, text.to_string());
         }
     })
-    .map_err(|_| "Rust panic encountered on make-rope.")
+    .map_err(|_| "Rust panic encountered on rope-replace!.")
     .scm_unwrap();
     Scm::UNDEFINED
 }
