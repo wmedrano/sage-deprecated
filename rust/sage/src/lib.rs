@@ -2,7 +2,7 @@ use std::ffi::CStr;
 
 use flashkick::module::{Module, ModuleInitContext};
 
-mod rope;
+pub mod rope;
 mod tui;
 
 pub struct SageModule;

@@ -129,7 +129,7 @@ impl Display for TerminalBackend {
 impl Drop for TerminalBackend {
     fn drop(&mut self) {
         match self {
-            TerminalBackend::Default(b) => {
+            TerminalBackend::Default(_) => {
                 let _ = crossterm::execute!(
                     std::io::stdout(),
                     crossterm::terminal::LeaveAlternateScreen

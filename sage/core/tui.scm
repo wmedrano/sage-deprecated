@@ -13,9 +13,10 @@
 Valid backend values are 'test and 'terminal."
   (ffi:make-tui backend))
 
-(define* (tui-draw! tui)
-  "Draw the contents of the tui."
-  (ffi:tui-draw! tui))
+(define* (tui-draw! tui rope)
+  "Draw the contents of rope on tui."
+  (ffi:tui-draw! tui rope)
+  tui)
 
 (define* (delete-tui! tui)
   "Delete the tui.
