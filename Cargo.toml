@@ -5,4 +5,5 @@ debug = true
 resolver = "2"
 members = [
   "rust/flashkick",
+  "rust/sage",
 ]

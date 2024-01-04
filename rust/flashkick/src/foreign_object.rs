@@ -35,11 +35,35 @@ pub trait ForeignObjectType: 'static + Sized {
     ///
     /// # Safety
     /// Calls C code.
-    unsafe fn from_scm(obj: Scm) -> *mut Self {
+    unsafe fn ptr_from_scm(obj: Scm) -> *mut Self {
         let scm_type = TYPE_ID_TO_SCM_TYPE.get::<Self>().scm_unwrap();
         ffi::scm_assert_foreign_object_type(scm_type.0, obj.0);
         let ptr: *mut c_void = ffi::scm_foreign_object_ref(obj.0, 0);
         ptr.cast()
+    }
+
+    /// Gets the immutable reference from scheme.
+    ///
+    /// # Safety
+    /// Calls C code. Additionally, the lifetime is static, but Scheme can't actually guarantee that
+    /// there are no mutable references to the object.
+    unsafe fn from_scm(obj: Scm) -> Option<&'static Self> {
+        let scm_type = TYPE_ID_TO_SCM_TYPE.get::<Self>().scm_unwrap();
+        ffi::scm_assert_foreign_object_type(scm_type.0, obj.0);
+        let ptr: *const Self = ffi::scm_foreign_object_ref(obj.0, 0).cast();
+        ptr.as_ref()
+    }
+
+    /// Gets the mutable reference from scheme.
+    ///
+    /// # Safety
+    /// Calls C code. Additionally, the lifetime is static, but Scheme can't actually guarantee that
+    /// there are no other mutable references to the object.
+    unsafe fn from_scm_mut(obj: Scm) -> Option<&'static mut Self> {
+        let scm_type = TYPE_ID_TO_SCM_TYPE.get::<Self>().scm_unwrap();
+        ffi::scm_assert_foreign_object_type(scm_type.0, obj.0);
+        let ptr: *mut Self = ffi::scm_foreign_object_ref(obj.0, 0).cast();
+        ptr.as_mut()
     }
 
     /// Drop the Scheme object.
@@ -52,7 +76,7 @@ pub trait ForeignObjectType: 'static + Sized {
 }
 
 unsafe extern "C" fn drop_scm_object<T: ForeignObjectType>(obj: ffi::SCM) {
-    let ptr = T::from_scm(obj.into());
+    let ptr = T::ptr_from_scm(obj.into());
     if ptr.is_null() {
         return;
     }
