@@ -4,6 +4,5 @@ debug = true
 [workspace]
 resolver = "2"
 members = [
-  "flashkick",
-  "willy",
+  "rust/flashkick",
 ]

@@ -2,7 +2,7 @@
 name = "flashkick"
 version = "0.1.1"
 edition = "2021"
-homepage = "https://github.com/wmedrano/willy"
+homepage = "https://github.com/wmedrano/sage/rust/flashkick"
 description = "Wrapper for GNU Guile Scheme."
 license = "LGPL-3.0-only"
 
