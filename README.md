@@ -1,6 +1,6 @@
-# Willy
+# Sage
 
-WIP: Willy is a work in progress, with the primary purpose being
+WIP: Sage is a work in progress, with the primary purpose being
 educational. Do not expect this to go far.
 
 A (Guile) Scheme configured IDE. Heavily inspired by Emacs.

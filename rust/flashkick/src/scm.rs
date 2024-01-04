@@ -52,6 +52,14 @@ impl Scm {
         Scm::from(ffi::scm_eq_p(self.0, other.0)).to_bool()
     }
 
+    /// Equivalent to (eqv? self other).
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn is_eqv(&self, other: Scm) -> bool {
+        Scm::from(ffi::scm_eqv_p(self.0, other.0)).to_bool()
+    }
+
     /// Equivalent to (number? self).
     ///
     /// # Safety
@@ -155,13 +163,7 @@ impl Scm {
 
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn new_pair(x: Scm, y: Scm) -> Scm {
-        Self::new_cons(x, y)
-    }
-
-    /// # Safety
-    /// Makes calls to C.
-    pub unsafe fn new_cons(x: Scm, y: Scm) -> Scm {
+    pub unsafe fn cons(x: Scm, y: Scm) -> Scm {
         ffi::scm_cons(x.0, y.0).into()
     }
 
@@ -198,10 +200,10 @@ impl Scm {
         };
         let mut tail = Scm::EOL;
         for item in iter {
-            tail = Scm::new_cons(head, tail);
+            tail = Scm::cons(head, tail);
             head = item;
         }
-        Scm::new_cons(head, tail)
+        Scm::cons(head, tail)
     }
 
     /// # Safety
@@ -211,7 +213,7 @@ impl Scm {
         I: IntoIterator<IntoIter = IT>,
         IT: DoubleEndedIterator + Iterator<Item = (Scm, Scm)>,
     {
-        Self::with_list(iter.into_iter().map(|(x, y)| Self::new_pair(x, y)))
+        Self::with_list(iter.into_iter().map(|(x, y)| Self::cons(x, y)))
     }
 
     /// # Safety
@@ -379,7 +381,7 @@ mod tests {
             boot_guile(std::iter::empty(), || {
                 let a = Scm::new_i32(1);
                 let b = Scm::new_i32(2);
-                let c = Scm::new_cons(a, b);
+                let c = Scm::cons(a, b);
                 assert_eq!(c.car().to_i32(), 1i32);
             })
         };
@@ -391,7 +393,7 @@ mod tests {
             boot_guile(std::iter::empty(), || {
                 let a = Scm::new_i32(1);
                 let b = Scm::new_i32(2);
-                let c = Scm::new_cons(a, b);
+                let c = Scm::cons(a, b);
                 assert_eq!(c.cdr().to_i32(), 2i32);
             })
         }
