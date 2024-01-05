@@ -1,13 +1,22 @@
-use std::{ffi::CStr, fmt::Display, ops::RangeBounds, panic::catch_unwind, time::Instant};
+use std::{
+    ffi::CStr,
+    fmt::Display,
+    ops::{Deref, RangeBounds},
+    panic::catch_unwind,
+    time::Instant,
+};
 
 use flashkick::{
     err::ResultToScm, foreign_object::ForeignObjectType, module::ModuleInitContext, Scm,
 };
+use tree_sitter::{Parser, Tree};
 
 /// Implements a rope datastructure for efficiently editing text.
 pub struct Rope {
     inner: crop::Rope,
     modified_timestamp: Instant,
+    parser: Option<Parser>,
+    tree: Option<Tree>,
 }
 
 impl ForeignObjectType for Rope {
@@ -27,12 +36,9 @@ impl Rope {
         Rope {
             inner: crop::Rope::new(),
             modified_timestamp: Instant::now(),
+            parser: None,
+            tree: None,
         }
-    }
-
-    /// Get the size of the rope in bytes.
-    pub fn byte_len(&self) -> usize {
-        self.inner.byte_len()
     }
 
     /// Replace the contents within `byte_range` with `text`.
@@ -45,17 +51,47 @@ impl Rope {
         self.modified_timestamp = Instant::now();
     }
 
-    /// Iterate over all the lines within the rope.
-    pub fn lines(&self) -> crop::iter::Lines<'_> {
-        self.inner.lines()
-    }
-
     /// Get a fingerprint of the state. Can be used to see if anything has changed.
     pub fn fingerprint(&self) -> RopeFingerprint {
         RopeFingerprint {
             rope_id: self,
             modified_timestamp: self.modified_timestamp,
         }
+    }
+
+    pub fn tree(&self) -> Option<&Tree> {
+        self.tree.as_ref()
+    }
+
+    /// Sets the tree sitter parser.
+    pub fn set_parser(&mut self, parser: Option<Parser>) {
+        self.parser = parser;
+        self.tree.take();
+        self.reparse();
+        self.modified_timestamp = Instant::now();
+    }
+
+    fn reparse(&mut self) {
+        if let Some(parser) = self.parser.as_mut() {
+            self.tree = parser.parse_with(
+                &mut |start_byte, _| {
+                    self.inner
+                        .byte_slice(start_byte..)
+                        .chunks()
+                        .next()
+                        .unwrap_or("")
+                },
+                self.tree.as_ref(),
+            );
+        }
+    }
+}
+
+impl Deref for Rope {
+    type Target = crop::Rope;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
@@ -97,6 +133,11 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
         CStr::from_bytes_with_nul(b"rope-replace!\0").unwrap(),
         scm_rope_replace,
         4,
+    );
+    ctx.define_subr_2(
+        CStr::from_bytes_with_nul(b"rope-set-language!\0").unwrap(),
+        scm_rope_set_language,
+        2,
     );
 }
 
@@ -145,6 +186,27 @@ extern "C" fn scm_rope_replace(rope: Scm, start_byte: Scm, end_byte: Scm, text: 
     Scm::UNDEFINED
 }
 
+extern "C" fn scm_rope_set_language(rope: Scm, language: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm_mut(rope).unwrap();
+        let language_str = language.to_string();
+        let language = match language_str.as_str() {
+            "rust" => Some(tree_sitter_rust::language()),
+            "" => None,
+            _ => panic!("Unknown language {language_str}",),
+        };
+        let parser = language.map(|l| {
+            let mut p = Parser::new();
+            p.set_language(l).scm_unwrap();
+            p
+        });
+        rope.set_parser(parser);
+    })
+    .map_err(|_| "Rust panic encountered on rope-replace!.")
+    .scm_unwrap();
+    Scm::UNDEFINED
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,5 +215,16 @@ mod tests {
     fn make_rope_creates_empty_rope() {
         let r = Rope::new();
         assert_eq!(r.to_string(), "");
+    }
+
+    #[test]
+    fn test_rope() {
+        let mut rope = crop::Rope::new();
+        rope.insert(0, "This is my\ntext that\nwill be here.");
+        let line = rope.line(1);
+        assert_eq!(line.byte_slice(0..3), "tex");
+        assert_eq!(line.byte_of_line(1), 0);
+        assert_eq!(line.byte_len(), 9);
+        assert!(false);
     }
 }

@@ -6,18 +6,23 @@
             rope-byte-length
             rope-clear!
             rope-delete!
-            rope-pop!
             rope-insert!
+            rope-pop!
             rope-replace!
+            rope-set-language!
             ))
 (use-modules ((sage core internal) #:prefix ffi:)
              (srfi srfi-2))
 
-(define* (make-rope #:key (text ""))
+(define* (make-rope #:key
+                    (text "")
+                    (language ""))
   "Create a new rope."
   (let ((rope (ffi:make-rope)))
     (unless (equal? text "")
       (rope-insert! rope 0 text))
+    (unless (equal? language "")
+      (rope-set-language! rope language))
     rope))
 
 (define* (rope->string rope)
@@ -63,3 +68,9 @@
   "Replace the contents between start (inclusive) and end (exclusive)
 with string-or-char."
   (ffi:rope-replace! rope start end string-or-char))
+
+(define* (rope-set-language! rope language)
+  "Set the language for the rope. Valid values are empty string for no
+language or rust."
+  (ffi:rope-set-language! rope language)
+  rope)

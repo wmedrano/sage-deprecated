@@ -14,16 +14,20 @@ use flashkick::{
 };
 use ratatui::{
     prelude::Rect,
-    style::{Color, Style, Stylize},
-    widgets::{Block, Widget},
+    style::{Color, Stylize},
+    widgets::Block,
     Frame, Terminal,
 };
 
 use crate::rope::{Rope, RopeFingerprint};
 
-use self::backend::{BackendType, TerminalBackend};
+use self::{
+    backend::{BackendType, TerminalBackend},
+    widgets::LineWidget,
+};
 
 mod backend;
+mod widgets;
 
 /// Used to manage the terminal UI.
 pub struct Tui {
@@ -68,15 +72,8 @@ impl Tui {
             frame.render_widget(Block::default().bg(Color::Black), area);
             for (y, line) in (area.y..area.bottom()).zip(rope.lines()) {
                 frame.render_widget(
-                    LineWidget {
-                        iter: line.chunks(),
-                    },
-                    Rect {
-                        x: area.x,
-                        y,
-                        width: area.width,
-                        height: 1,
-                    },
+                    LineWidget::new(line.chunks()),
+                    Rect::new(area.x, y, area.width, 1),
                 )
             }
         })?;
@@ -170,24 +167,4 @@ extern "C" fn scm_tui_to_string(tui: Scm) -> Scm {
     })
     .map_err(|_| "Rust panic encountered on make-tui.")
     .scm_unwrap()
-}
-
-struct LineWidget<I> {
-    iter: I,
-}
-
-impl<'a, I: Iterator<Item = &'a str>> Widget for LineWidget<I> {
-    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let mut x = area.x;
-        let mut width = area.width as usize;
-        for s in self.iter {
-            if width == 0 {
-                break;
-            }
-            let (new_x, _) = buf.set_stringn(x, area.y, s, width, Style::new());
-            let delta = new_x - x;
-            x = new_x;
-            width = width.saturating_sub(delta as usize);
-        }
-    }
 }

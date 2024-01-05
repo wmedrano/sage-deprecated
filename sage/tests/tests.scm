@@ -1,3 +1,5 @@
+#!/usr/bin/guile -s
+!#
 (use-modules ((sage core rope) #:prefix  rope:)
              ((sage core tui)  #:prefix  tui:)
              (srfi srfi-64))
@@ -50,11 +52,27 @@
     (rope:rope-pop! rope)
     (rope:rope->string rope)))
 
+;; This is a bug. Sage should support Unicode.
+(test-error
+ "pop on character with UTF-8 longer than 1 character fails"
+ (rope:rope-pop! (rope:make-rope #:text"🤖")))
+
 (test-equal "pop on empty rope does nothing"
   ""
   (let ((rope (rope:make-rope #:text "")))
     (rope:rope-pop! rope)
     (rope:rope->string rope)))
+
+(test-assert "can set language"
+  (let ((rope (rope:make-rope #:text "pub fn language() -> i32 { 0 }")))
+    (rope:rope-set-language! rope "rust")
+    (rope:rope-set-language! rope "")
+    rope))
+
+(test-error
+ "bad language fails"
+ (rope:rope-set-language! (rope:make-rope #:text "pub fn language() -> i32 { 0 }")
+                          "my-custom-language"))
 
 (test-equal "new tui has empty buffer"
   (string-concatenate
