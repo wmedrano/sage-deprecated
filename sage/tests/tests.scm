@@ -26,6 +26,12 @@
     (rope:rope-clear! rope)
     (rope:rope->string rope)))
 
+(test-equal "can clear empty rope"
+  ""
+  (let ((rope (rope:make-rope #:text "")))
+    (rope:rope-clear! rope)
+    (rope:rope->string rope)))
+
 (test-equal "can insert onto rope"
   "Have a very happy day."
   (let ((rope (rope:make-rope #:text "Have a happy day.")))
@@ -36,6 +42,18 @@
   "Terminals are the future."
   (let ((rope (rope:make-rope #:text "Terminals are the past.")))
     (rope:rope-replace! rope 18 22 "future")
+    (rope:rope->string rope)))
+
+(test-equal "pop deletes final character"
+  "Pop the letter "
+  (let ((rope (rope:make-rope #:text "Pop the letter x")))
+    (rope:rope-pop! rope)
+    (rope:rope->string rope)))
+
+(test-equal "pop on empty rope does nothing"
+  ""
+  (let ((rope (rope:make-rope #:text "")))
+    (rope:rope-pop! rope)
     (rope:rope->string rope)))
 
 (test-equal "new tui has empty buffer"

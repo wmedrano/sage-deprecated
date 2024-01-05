@@ -1,53 +1,84 @@
-use std::{
-    ffi::CStr,
-    fmt::Display,
-    ops::{Deref, DerefMut},
-    panic::catch_unwind,
-};
+use std::{ffi::CStr, fmt::Display, ops::RangeBounds, panic::catch_unwind, time::Instant};
 
 use flashkick::{
     err::ResultToScm, foreign_object::ForeignObjectType, module::ModuleInitContext, Scm,
 };
 
-#[repr(transparent)]
-pub struct RopeWrapper(crop::Rope);
+/// Implements a rope datastructure for efficiently editing text.
+pub struct Rope {
+    inner: crop::Rope,
+    modified_timestamp: Instant,
+}
 
-impl ForeignObjectType for RopeWrapper {
+impl ForeignObjectType for Rope {
     const NAME: &'static str = "sage-rope";
 }
 
-impl RopeWrapper {
+/// A structure that  can be used to compare the state of a rope.
+#[derive(PartialEq)]
+pub struct RopeFingerprint {
+    rope_id: *const Rope,
+    modified_timestamp: Instant,
+}
+
+impl Rope {
     /// Create a new rope.
-    pub fn new() -> RopeWrapper {
-        RopeWrapper(crop::Rope::new())
+    pub fn new() -> Rope {
+        Rope {
+            inner: crop::Rope::new(),
+            modified_timestamp: Instant::now(),
+        }
+    }
+
+    /// Get the size of the rope in bytes.
+    pub fn byte_len(&self) -> usize {
+        self.inner.byte_len()
+    }
+
+    /// Replace the contents within `byte_range` with `text`.
+    pub fn replace<R, T>(&mut self, byte_range: R, text: T)
+    where
+        R: RangeBounds<usize>,
+        T: AsRef<str>,
+    {
+        self.inner.replace(byte_range, text);
+        self.modified_timestamp = Instant::now();
+    }
+
+    /// Iterate over all the lines within the rope.
+    pub fn lines(&self) -> crop::iter::Lines<'_> {
+        self.inner.lines()
+    }
+
+    /// Get a fingerprint of the state. Can be used to see if anything has changed.
+    pub fn fingerprint(&self) -> RopeFingerprint {
+        RopeFingerprint {
+            rope_id: self,
+            modified_timestamp: self.modified_timestamp,
+        }
     }
 }
 
-impl Deref for RopeWrapper {
-    type Target = crop::Rope;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for RopeWrapper {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Display for RopeWrapper {
+impl Display for Rope {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for chunk in self.0.chunks() {
+        for chunk in self.inner.chunks() {
             f.write_str(chunk)?;
         }
         Ok(())
     }
 }
 
+impl Default for RopeFingerprint {
+    fn default() -> Self {
+        RopeFingerprint {
+            rope_id: std::ptr::null(),
+            modified_timestamp: Instant::now(),
+        }
+    }
+}
+
 pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
-    ctx.define_type::<RopeWrapper>();
+    ctx.define_type::<Rope>();
     ctx.define_subr_0(
         CStr::from_bytes_with_nul(b"make-rope\0").unwrap(),
         scm_make_rope,
@@ -71,7 +102,7 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
 
 extern "C" fn scm_make_rope() -> Scm {
     catch_unwind(|| {
-        let rope = unsafe { RopeWrapper::to_scm(RopeWrapper::new().into()) };
+        let rope = unsafe { Rope::to_scm(Rope::new().into()) };
         rope
     })
     .map_err(|_| "Rust panic encountered on make-rope.")
@@ -80,7 +111,7 @@ extern "C" fn scm_make_rope() -> Scm {
 
 extern "C" fn scm_rope_to_string(rope: Scm) -> Scm {
     catch_unwind(|| unsafe {
-        let rope = RopeWrapper::from_scm(rope).unwrap();
+        let rope = Rope::from_scm(rope).unwrap();
         Scm::new_string(rope.to_string().as_str())
     })
     .map_err(|_| "Rust panic encountered on rope->string.")
@@ -89,7 +120,7 @@ extern "C" fn scm_rope_to_string(rope: Scm) -> Scm {
 
 extern "C" fn scm_rope_byte_length(rope: Scm) -> Scm {
     catch_unwind(|| unsafe {
-        let rope = RopeWrapper::from_scm(rope).unwrap();
+        let rope = Rope::from_scm(rope).unwrap();
         Scm::new_u32(rope.byte_len() as u32)
     })
     .map_err(|_| "Rust panic encountered on rope->byte-length.")
@@ -98,7 +129,7 @@ extern "C" fn scm_rope_byte_length(rope: Scm) -> Scm {
 
 extern "C" fn scm_rope_replace(rope: Scm, start_byte: Scm, end_byte: Scm, text: Scm) -> Scm {
     catch_unwind(|| unsafe {
-        let rope = RopeWrapper::from_scm_mut(rope).unwrap();
+        let rope = Rope::from_scm_mut(rope).unwrap();
         let start = start_byte.to_u32() as usize;
         let end = end_byte.to_u32() as usize;
         if text.is_char() {
@@ -120,7 +151,7 @@ mod tests {
 
     #[test]
     fn make_rope_creates_empty_rope() {
-        let r = RopeWrapper::new();
+        let r = Rope::new();
         assert_eq!(r.to_string(), "");
     }
 }

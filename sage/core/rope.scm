@@ -10,7 +10,8 @@
             rope-insert!
             rope-replace!
             ))
-(use-modules ((sage core internal) #:prefix ffi:))
+(use-modules ((sage core internal) #:prefix ffi:)
+             (srfi srfi-2))
 
 (define* (make-rope #:key (text ""))
   "Create a new rope."
@@ -25,13 +26,16 @@
 
 (define* (rope-append! rope string-or-char)
   "Append string-or-char to the end of the rope."
-  (rope-insert! rope (rope-byte-length rope) string-or-char))
+  (rope-insert! rope (rope-byte-length rope) string-or-char)
+  rope)
 
 (define* (rope-pop! rope)
   "Delete the last byte in the rope."
-  (let* ((end   (rope-byte-length rope))
-         (start (- end 1)))
-    (rope-delete! rope start end)))
+  (and-let* ((end       (rope-byte-length rope))
+             (has-text? (> end 0))
+             (start     (- end 1)))
+    (rope-delete! rope start end))
+  rope)
 
 (define* (rope-byte-length rope)
   "Get the length (in bytes) of the rope."

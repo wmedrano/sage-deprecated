@@ -6,7 +6,6 @@ use std::{
 };
 
 use anyhow::Result;
-use crop::Rope;
 use flashkick::{
     err::{throw_error, ResultToScm},
     foreign_object::ForeignObjectType,
@@ -20,7 +19,7 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::rope::RopeWrapper;
+use crate::rope::{Rope, RopeFingerprint};
 
 use self::backend::{BackendType, TerminalBackend};
 
@@ -32,6 +31,8 @@ pub struct Tui {
     terminal: Terminal<TerminalBackend>,
     /// The last time draw was called.
     frame_time: Instant,
+    /// The state of the last draw. Used to determine if a redraw is necessary.
+    previous_state: RopeFingerprint,
 }
 
 impl ForeignObjectType for Tui {
@@ -46,11 +47,22 @@ impl Tui {
         Ok(Tui {
             terminal,
             frame_time: Instant::now(),
+            previous_state: RopeFingerprint::default(),
         })
     }
 
     /// Draw the contents on the screen. This is limited to 60 calls per second.
     pub fn draw(&mut self, rope: &Rope) -> Result<()> {
+        let new_state = rope.fingerprint();
+        if self.previous_state != new_state {
+            self.do_draw(rope)?;
+            self.previous_state = new_state;
+        }
+        self.limit_frames();
+        Ok(())
+    }
+
+    fn do_draw(&mut self, rope: &Rope) -> Result<()> {
         self.terminal.draw(|frame: &mut Frame| {
             let area = frame.size();
             frame.render_widget(Block::default().bg(Color::Black), area);
@@ -68,7 +80,6 @@ impl Tui {
                 )
             }
         })?;
-        self.limit_frames();
         Ok(())
     }
 
@@ -133,7 +144,7 @@ extern "C" fn scm_make_tui(backend: Scm) -> Scm {
 extern "C" fn scm_tui_draw(tui: Scm, rope: Scm) -> Scm {
     catch_unwind(|| unsafe {
         let tui = Tui::from_scm_mut(tui).unwrap();
-        let rope = RopeWrapper::from_scm(rope).unwrap();
+        let rope = Rope::from_scm(rope).unwrap();
         tui.draw(&rope).scm_unwrap();
     })
     .map_err(|_| "Rust panic encountered on make-tui.")
