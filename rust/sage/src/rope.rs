@@ -1,7 +1,7 @@
 use std::{
     ffi::CStr,
     fmt::Display,
-    ops::{Deref, RangeBounds},
+    ops::{Deref, Range},
     panic::catch_unwind,
     time::Instant,
 };
@@ -9,7 +9,9 @@ use std::{
 use flashkick::{
     err::ResultToScm, foreign_object::ForeignObjectType, module::ModuleInitContext, Scm,
 };
-use tree_sitter::{Parser, Tree};
+use tree_sitter::{Language, Parser, Point, Tree};
+
+use crate::theme::{HighlightRange, SyntaxTheme};
 
 /// Implements a rope datastructure for efficiently editing text.
 pub struct Rope {
@@ -17,6 +19,8 @@ pub struct Rope {
     modified_timestamp: Instant,
     parser: Option<Parser>,
     tree: Option<Tree>,
+    syntax_theme: Option<SyntaxTheme>,
+    highlights: Vec<HighlightRange>,
 }
 
 impl ForeignObjectType for Rope {
@@ -38,16 +42,29 @@ impl Rope {
             modified_timestamp: Instant::now(),
             parser: None,
             tree: None,
+            syntax_theme: None,
+            highlights: Vec::new(),
         }
     }
 
     /// Replace the contents within `byte_range` with `text`.
-    pub fn replace<R, T>(&mut self, byte_range: R, text: T)
+    pub fn replace<T>(&mut self, byte_range: Range<usize>, text: T)
     where
-        R: RangeBounds<usize>,
         T: AsRef<str>,
     {
-        self.inner.replace(byte_range, text);
+        let text = text.as_ref();
+        self.inner.replace(byte_range.clone(), text);
+        if let Some(tree) = self.tree.as_mut() {
+            tree.edit(&tree_sitter::InputEdit {
+                start_byte: byte_range.start,
+                old_end_byte: byte_range.end,
+                new_end_byte: byte_range.start + text.len(),
+                start_position: Point::default(),
+                old_end_position: Point::default(),
+                new_end_position: Point::default(),
+            });
+            self.reparse();
+        }
         self.modified_timestamp = Instant::now();
     }
 
@@ -59,20 +76,47 @@ impl Rope {
         }
     }
 
+    /// Get the tree for the rope.
     pub fn tree(&self) -> Option<&Tree> {
         self.tree.as_ref()
     }
 
-    /// Sets the tree sitter parser.
-    pub fn set_parser(&mut self, parser: Option<Parser>) {
-        self.parser = parser;
+    /// Sets the tree sitter language.
+    pub fn set_language<L: Into<Option<Language>>>(&mut self, language: L, highlights: &str) {
+        self.parser.take();
         self.tree.take();
-        self.reparse();
+        self.syntax_theme.take();
+        if let Some(language) = language.into() {
+            self.parser = {
+                let mut p = Parser::new();
+                p.set_language(language).unwrap();
+                Some(p)
+            };
+            self.syntax_theme = SyntaxTheme::new(language, highlights).into();
+            self.tree.take();
+            self.reparse();
+        }
         self.modified_timestamp = Instant::now();
+    }
+
+    /// Update the highlights.
+    pub fn update_highlights(&mut self) {
+        if self.highlights.is_empty() {
+            if let (Some(theme), Some(tree)) = (self.syntax_theme.as_mut(), self.tree.as_ref()) {
+                self.highlights
+                    .extend(theme.highlight(tree, RopeTextProvider(&self.inner)));
+            }
+        }
+    }
+
+    /// Get the current highlights for the rope.
+    pub fn highlights(&self) -> &[HighlightRange] {
+        &self.highlights
     }
 
     fn reparse(&mut self) {
         if let Some(parser) = self.parser.as_mut() {
+            self.highlights.clear();
             self.tree = parser.parse_with(
                 &mut |start_byte, _| {
                     self.inner
@@ -92,6 +136,19 @@ impl Deref for Rope {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+pub(crate) struct RopeTextProvider<'a>(&'a crop::Rope);
+
+impl<'a> tree_sitter::TextProvider<'a> for RopeTextProvider<'a> {
+    type I = std::iter::Map<crop::iter::Chunks<'a>, fn(&str) -> &[u8]>;
+
+    fn text(&mut self, node: tree_sitter::Node) -> Self::I {
+        let start = node.start_byte();
+        let end = node.end_byte();
+        let chunks = self.0.byte_slice(start..end).chunks();
+        chunks.map(|s| s.as_bytes())
     }
 }
 
@@ -195,12 +252,11 @@ extern "C" fn scm_rope_set_language(rope: Scm, language: Scm) -> Scm {
             "" => None,
             _ => panic!("Unknown language {language_str}",),
         };
-        let parser = language.map(|l| {
-            let mut p = Parser::new();
-            p.set_language(l).scm_unwrap();
-            p
-        });
-        rope.set_parser(parser);
+        let highlights = match language_str.as_str() {
+            "rust" => tree_sitter_rust::HIGHLIGHT_QUERY,
+            _ => "",
+        };
+        rope.set_language(language, highlights);
     })
     .map_err(|_| "Rust panic encountered on rope-replace!.")
     .scm_unwrap();
@@ -215,16 +271,5 @@ mod tests {
     fn make_rope_creates_empty_rope() {
         let r = Rope::new();
         assert_eq!(r.to_string(), "");
-    }
-
-    #[test]
-    fn test_rope() {
-        let mut rope = crop::Rope::new();
-        rope.insert(0, "This is my\ntext that\nwill be here.");
-        let line = rope.line(1);
-        assert_eq!(line.byte_slice(0..3), "tex");
-        assert_eq!(line.byte_of_line(1), 0);
-        assert_eq!(line.byte_len(), 9);
-        assert!(false);
     }
 }

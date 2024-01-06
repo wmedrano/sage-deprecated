@@ -13,7 +13,6 @@ use flashkick::{
     Scm,
 };
 use ratatui::{
-    prelude::Rect,
     style::{Color, Stylize},
     widgets::Block,
     Frame, Terminal,
@@ -23,7 +22,7 @@ use crate::rope::{Rope, RopeFingerprint};
 
 use self::{
     backend::{BackendType, TerminalBackend},
-    widgets::LineWidget,
+    widgets::SyntaxHighlightedText,
 };
 
 mod backend;
@@ -56,9 +55,10 @@ impl Tui {
     }
 
     /// Draw the contents on the screen. This is limited to 60 calls per second.
-    pub fn draw(&mut self, rope: &Rope) -> Result<()> {
+    pub fn draw(&mut self, rope: &mut Rope) -> Result<()> {
         let new_state = rope.fingerprint();
         if self.previous_state != new_state {
+            rope.update_highlights();
             self.do_draw(rope)?;
             self.previous_state = new_state;
         }
@@ -70,12 +70,8 @@ impl Tui {
         self.terminal.draw(|frame: &mut Frame| {
             let area = frame.size();
             frame.render_widget(Block::default().bg(Color::Black), area);
-            for (y, line) in (area.y..area.bottom()).zip(rope.lines()) {
-                frame.render_widget(
-                    LineWidget::new(line.chunks()),
-                    Rect::new(area.x, y, area.width, 1),
-                )
-            }
+            let widget = SyntaxHighlightedText::new(rope);
+            frame.render_widget(widget, frame.size());
         })?;
         Ok(())
     }
@@ -141,8 +137,8 @@ extern "C" fn scm_make_tui(backend: Scm) -> Scm {
 extern "C" fn scm_tui_draw(tui: Scm, rope: Scm) -> Scm {
     catch_unwind(|| unsafe {
         let tui = Tui::from_scm_mut(tui).unwrap();
-        let rope = Rope::from_scm(rope).unwrap();
-        tui.draw(&rope).scm_unwrap();
+        let rope = Rope::from_scm_mut(rope).unwrap();
+        tui.draw(rope).scm_unwrap();
     })
     .map_err(|_| "Rust panic encountered on make-tui.")
     .scm_unwrap();

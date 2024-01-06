@@ -4,6 +4,7 @@ use flashkick::module::{Module, ModuleInitContext};
 
 mod event;
 pub mod rope;
+pub mod theme;
 mod tui;
 
 pub struct SageModule;

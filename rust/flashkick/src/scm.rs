@@ -193,16 +193,10 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn with_list_impl(mut iter: impl Iterator<Item = Scm>) -> Scm {
-        let mut head = match iter.next() {
-            Some(item) => item,
-            None => return Scm::EOL,
-        };
-        let mut tail = Scm::EOL;
-        for item in iter {
-            tail = Scm::cons(head, tail);
-            head = item;
+        match iter.next() {
+            Some(head) => Scm::cons(head, Self::with_list_impl(iter)),
+            None => Scm::EOL,
         }
-        Scm::cons(head, tail)
     }
 
     /// # Safety
@@ -444,7 +438,7 @@ mod tests {
                         .iter()
                         .map(|scm| scm.to_u32())
                         .collect::<Vec<u32>>(),
-                    vec![105, 104, 103, 102, 101, 100],
+                    vec![100, 101, 102, 103, 104, 105],
                 );
             })
         }

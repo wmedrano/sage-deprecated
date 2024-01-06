@@ -1,29 +1,44 @@
 use ratatui::{style::Style, widgets::Widget};
 
-/// A widget for rendering a single line.
-pub struct LineWidget<S> {
-    /// The contents of the line. Usually an iterator that produces `&str`.
-    contents: S,
+use crate::rope::Rope;
+
+pub struct SyntaxHighlightedText<'a> {
+    text: &'a Rope,
 }
 
-impl<S> LineWidget<S> {
-    pub fn new(contents: S) -> LineWidget<S> {
-        LineWidget { contents }
+impl<'a> SyntaxHighlightedText<'a> {
+    pub fn new(text: &'a Rope) -> SyntaxHighlightedText<'a> {
+        SyntaxHighlightedText { text }
     }
 }
 
-impl<'a, S: Iterator<Item = &'a str>> Widget for LineWidget<S> {
+impl<'a> Widget for SyntaxHighlightedText<'a> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let mut x = area.x;
-        let mut width = area.width as usize;
-        for s in self.contents {
-            if width == 0 {
-                break;
+        let highlights = self.text.highlights();
+        let find_style = |b: usize| {
+            highlights
+                .iter()
+                .find(|h| h.range.contains(&b))
+                .map(|h| h.style)
+                .unwrap_or_else(Style::new)
+        };
+        let rope_lines = self.text.line_len();
+        for (idx, y) in (0..rope_lines).zip(area.y..area.bottom()) {
+            let mut byte_index = self.text.byte_of_line(idx);
+            let line = self.text.line(idx);
+            let mut x = area.x;
+            let mut width = area.width;
+            for ch in line.chars() {
+                if width == 0 {
+                    break;
+                }
+                let cell = buf.get_mut(x, y);
+                cell.set_char(ch);
+                cell.set_style(find_style(byte_index));
+                byte_index += ch.len_utf8();
+                x += 1;
+                width -= 1;
             }
-            let (new_x, _) = buf.set_stringn(x, area.y, s, width, Style::new());
-            let delta = new_x - x;
-            x = new_x;
-            width = width.saturating_sub(delta as usize);
         }
     }
 }
