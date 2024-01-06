@@ -3,7 +3,6 @@ use std::{
     fmt::Display,
     ops::{Deref, Range},
     panic::catch_unwind,
-    time::Instant,
 };
 
 use flashkick::{
@@ -16,7 +15,6 @@ use crate::theme::{HighlightRange, SyntaxTheme};
 /// Implements a rope datastructure for efficiently editing text.
 pub struct Rope {
     inner: crop::Rope,
-    modified_timestamp: Instant,
     parser: Option<Parser>,
     tree: Option<Tree>,
     syntax_theme: Option<SyntaxTheme>,
@@ -27,19 +25,11 @@ impl ForeignObjectType for Rope {
     const NAME: &'static str = "sage-rope";
 }
 
-/// A structure that  can be used to compare the state of a rope.
-#[derive(PartialEq)]
-pub struct RopeFingerprint {
-    rope_id: *const Rope,
-    modified_timestamp: Instant,
-}
-
 impl Rope {
     /// Create a new rope.
     pub fn new() -> Rope {
         Rope {
             inner: crop::Rope::new(),
-            modified_timestamp: Instant::now(),
             parser: None,
             tree: None,
             syntax_theme: None,
@@ -65,15 +55,6 @@ impl Rope {
             });
             self.reparse();
         }
-        self.modified_timestamp = Instant::now();
-    }
-
-    /// Get a fingerprint of the state. Can be used to see if anything has changed.
-    pub fn fingerprint(&self) -> RopeFingerprint {
-        RopeFingerprint {
-            rope_id: self,
-            modified_timestamp: self.modified_timestamp,
-        }
     }
 
     /// Get the tree for the rope.
@@ -96,7 +77,6 @@ impl Rope {
             self.tree.take();
             self.reparse();
         }
-        self.modified_timestamp = Instant::now();
     }
 
     /// Update the highlights.
@@ -158,15 +138,6 @@ impl Display for Rope {
             f.write_str(chunk)?;
         }
         Ok(())
-    }
-}
-
-impl Default for RopeFingerprint {
-    fn default() -> Self {
-        RopeFingerprint {
-            rope_id: std::ptr::null(),
-            modified_timestamp: Instant::now(),
-        }
     }
 }
 

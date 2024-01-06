@@ -14,9 +14,9 @@ Valid backend values are 'test and 'terminal."
   (ffi:make-tui backend))
 
 (define* (tui-draw! tui rope)
-  "Draw the contents of rope on tui."
-  (ffi:tui-draw! tui rope)
-  tui)
+  "Draw the contents of rope on tui. Returns the size of the terminal
+window."
+  (ffi:tui-draw! tui rope))
 
 (define* (delete-tui! tui)
   "Delete the tui.
