@@ -1,31 +1,34 @@
 (define-module (sage core window)
   #:export (
             make-window
-            window-set-rope!
-            window-rope
+            window-set-buffer!
+            window-buffer
             window-set-position!
             make-position
             window-feature
             window-features
+            window-set-feature!
             ))
-(use-modules ((sage core rope) #:prefix rope:))
+(use-modules ((sage core rope)   #:prefix rope:)
+             ((sage core buffer) #:prefix buffer:))
 
 (define* (make-window #:key
-                      (rope (rope:make-rope))
+                      buffer
                       (position (make-position 0 0 0 0))
                       (features '()))
   "Make a new window."
-  `((rope     . ,rope)
-    (position . ,position)
-    (features . ,features)))
+  (let ((mutable-features (map (lambda (p) (cons (car p) (cdr p))) features)))
+    `((buffer   . ,buffer)
+      (position . ,position)
+      (features . ,mutable-features))))
 
-(define* (window-rope window)
-  "Get the rope associated with the window."
-  (assoc-ref window 'rope))
+(define* (window-buffer window)
+  "Get the buffer associated buffer for window."
+  (assoc-ref window 'buffer))
 
-(define* (window-set-rope! window rope)
-  "Set the window's rope."
-  (assoc-set! window 'rope rope))
+(define* (window-set-buffer! window buffer)
+  "Set the buffer for window."
+  (assoc-set! window 'buffer buffer))
 
 (define* (window-set-position! window position)
   "Set the position of the window."
@@ -43,3 +46,9 @@
   "Get the value of a specific feature for a window or #f if it is not present."
   (assoc-ref (window-features window)
              feature))
+
+(define* (window-set-feature! window feature value)
+  "Set the value of a feature in window."
+  (assoc-set! window
+              'features
+              (assoc-set! (window-features window) feature value)))

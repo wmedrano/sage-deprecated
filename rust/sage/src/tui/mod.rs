@@ -183,14 +183,24 @@ unsafe fn scm_rect_to_alist(rect: Rect) -> Scm {
 
 unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
     {
+        let mut has_buffer = false;
         let mut rope = None;
         let mut area = Rect::new(0, 0, 0, 0);
         let mut border = false;
         let mut line_numbers = false;
         let mut cursor = CursorPosition::None;
+        let mut title = None;
         for (key, value) in window.iter_pairs() {
             match key.to_symbol().as_str() {
-                "rope" => rope = Some(Rope::from_scm_mut(value).unwrap()),
+                "buffer" => {
+                    has_buffer = true;
+                    for (key, value) in value.iter_pairs() {
+                        match key.to_symbol().as_str() {
+                            "rope" => rope = Some(Rope::from_scm_mut(value).unwrap()),
+                            _ => (),
+                        }
+                    }
+                }
                 "position" => area = scm_rect_from_alist(value),
                 "features" => {
                     for (feature, value) in value.iter_pairs() {
@@ -206,6 +216,7 @@ unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
                                     cursor = CursorPosition::None;
                                 }
                             }
+                            "title" => title = Some(value.to_string()),
                             _ => (),
                         }
                     }
@@ -213,10 +224,21 @@ unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
                 _ => (),
             }
         }
-        rope.as_mut().unwrap().update_highlights();
+        let rope = match rope {
+            Some(r) => r,
+            None => {
+                if has_buffer {
+                    throw_error("window does not contain a buffer")
+                } else {
+                    throw_error("buffer does not contain a rope")
+                }
+            }
+        };
+        rope.update_highlights();
         Window {
-            rope: rope.unwrap(),
+            rope,
             area,
+            title,
             border,
             line_numbers,
             cursor,

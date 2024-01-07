@@ -3,9 +3,13 @@ use std::ops::Range;
 use ratatui::style::{Color, Style};
 use tree_sitter::{Node, Query, QueryCursor, TextProvider, Tree};
 
+/// Provides highlight ranges for text.
 pub struct SyntaxTheme {
+    /// The TreeSitter query that defines all the important concepts.
     query: Query,
+    /// A TreeSitter cursor used internally to traverse TreeSitter nodes.
     cursor: QueryCursor,
+    /// Maps a Query capture (by index) to a ratatui terminal style.
     capture_to_color: Vec<Style>,
 }
 

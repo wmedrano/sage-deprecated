@@ -1,6 +1,7 @@
 (define-module (sage modal)
   #:export (run-modal! open-file!))
 (use-modules
+ ((sage core buffer) #:prefix buffer:)
  ((sage core rope)   #:prefix rope:)
  ((sage core window) #:prefix window:)
  ((sage state)       #:prefix state:)
@@ -19,10 +20,12 @@
   (define matches items)
   (define target-window (state:focused-window))
   (define rope   (rope:make-rope #:text (%make-modal-string prompt query matches)))
+  (define buffer (buffer:make-buffer #:rope rope))
   (define window (window:make-window
-                  #:rope     rope
+                  #:buffer   buffer
                   #:position (modal-position (state:frame-width) (state:frame-height))
                   #:features '((border? . #t)
+                               (title   . "Open File")
                                (cursor? . 0))))
   (define cleanup-hook (make-hook))
   (define (cleanup!)
@@ -78,16 +81,19 @@
     "")))
 
 (define* (open-file!)
+  (define (on-select! file-path)
+    (let ((window   (state:focused-window))
+          (language (language-for-path file-path))
+          (text     (call-with-input-file file-path get-string-all)))
+      (window:window-set-feature! window 'title file-path)
+      (window:window-set-buffer!
+       window
+       (buffer:make-buffer #:file-path file-path
+                           #:rope (rope:make-rope #:text text
+                                                  #:language language)))))
   (run-modal! #:prompt "Open File: "
               #:items (%discover-files ".")
-              #:on-select (lambda (f)
-                            (let ((window   (state:focused-window))
-                                  (language (language-for-path f))
-                                  (text     (call-with-input-file f get-string-all)))
-                              (window:window-set-rope!
-                               window
-                               (rope:make-rope #:text text
-                                               #:language language))))))
+              #:on-select on-select!))
 
 (define* (%filter-items-by-query items query)
   (define (item-matches-all-subqueries? item subqueries)
