@@ -12,22 +12,18 @@ use flashkick::{
     module::ModuleInitContext,
     Scm,
 };
-use ratatui::{
-    prelude::Rect,
-    style::{Color, Stylize},
-    widgets::{Block, BorderType, Borders, Clear},
-    Frame, Terminal,
-};
+use ratatui::{prelude::Rect, Frame, Terminal};
 
 use crate::rope::Rope;
 
 use self::{
     backend::{BackendType, TerminalBackend},
-    widgets::SyntaxHighlightedText,
+    window::Window,
 };
 
 mod backend;
 mod widgets;
+mod window;
 
 /// Used to manage the terminal UI.
 pub struct Tui {
@@ -41,12 +37,6 @@ pub struct Tui {
 
 impl ForeignObjectType for Tui {
     const NAME: &'static str = "sage-tui";
-}
-
-pub struct Window<'a> {
-    pub rope: &'a Rope,
-    pub area: Rect,
-    pub border: bool,
 }
 
 impl Tui {
@@ -63,34 +53,16 @@ impl Tui {
     }
 
     /// Draw the contents on the screen. This is limited to 60 calls per second.
-    pub fn draw<'a>(&mut self, windows: impl Iterator<Item = &'a Window<'a>>) -> Result<Rect> {
-        self.do_draw(windows)?;
-        self.limit_frames();
-        Ok(self.frame_size)
-    }
-
-    fn do_draw<'a>(&mut self, windows: impl Iterator<Item = &'a Window<'a>>) -> Result<()> {
+    pub fn draw<'a>(&mut self, windows: impl Iterator<Item = Window<'a>>) -> Result<Rect> {
         self.terminal.draw(|frame: &mut Frame| {
-            let frame_area = frame.size();
-            self.frame_size = frame_area;
+            let area = frame.size();
+            self.frame_size = area;
             for window in windows {
-                // 1. Clear the area.
-                let mut area = window.area.intersection(frame_area);
-                frame.render_widget(Clear, area);
-                // 2. Render the block and possibly a border.
-                let mut block = Block::new().bg(Color::Reset);
-                let block_area = area;
-                if window.border {
-                    block = block.borders(Borders::ALL).border_type(BorderType::Rounded);
-                }
-                area = block.inner(area);
-                frame.render_widget(block, block_area);
-                // 3. Render the text widget.
-                let widget = SyntaxHighlightedText::new(window.rope);
-                frame.render_widget(widget, self.frame_size.intersection(area));
+                frame.render_widget(window, area);
             }
         })?;
-        Ok(())
+        self.limit_frames();
+        Ok(self.frame_size)
     }
 
     fn limit_frames(&mut self) {
@@ -160,6 +132,7 @@ extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
                 let mut rope = None;
                 let mut area = Rect::new(0, 0, 0, 0);
                 let mut border = false;
+                let mut line_numbers = false;
                 for (key, value) in window.iter_pairs() {
                     match key.to_symbol().as_str() {
                         "rope" => rope = Some(Rope::from_scm_mut(value).unwrap()),
@@ -168,6 +141,7 @@ extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
                             for (feature, value) in value.iter_pairs() {
                                 match feature.to_symbol().as_str() {
                                     "border?" => border = value.to_bool(),
+                                    "line-numbers?" => line_numbers = value.to_bool(),
                                     _ => (),
                                 }
                             }
@@ -180,10 +154,11 @@ extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
                     rope: rope.unwrap(),
                     area,
                     border,
+                    line_numbers,
                 }
             })
             .collect();
-        let frame_size = tui.draw(windows.iter().rev()).scm_unwrap();
+        let frame_size = tui.draw(windows.into_iter().rev()).scm_unwrap();
         scm_rect_to_alist(frame_size)
     })
     .map_err(|_| "Rust panic encountered on tui-draw.")

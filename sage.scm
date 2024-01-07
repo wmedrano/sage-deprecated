@@ -46,7 +46,8 @@
    (window:make-window #:rope (rope:make-rope #:text     "fn main() {\n}"
                                               #:language "rust")
                        #:position (window:make-position 0 1 80 24)
-                       #:features '((editable? . #t)))
+                       #:features '((editable?     . #t)
+                                    (line-numbers? . #t)))
    #:set-focus? #t)
   (state:add-window!
    (window:make-window
