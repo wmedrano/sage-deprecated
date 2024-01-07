@@ -14,7 +14,7 @@ use flashkick::{
 };
 use ratatui::{prelude::Rect, Frame, Terminal};
 
-use crate::rope::Rope;
+use crate::{rope::Rope, scm_const};
 
 use self::{
     backend::{BackendType, TerminalBackend},
@@ -158,18 +158,13 @@ extern "C" fn scm_tui_to_string(tui: Scm) -> Scm {
     .scm_unwrap()
 }
 
-unsafe fn scm_rect_from_alist(rect: Scm) -> Rect {
-    let mut r = Rect::new(0, 0, 0, 0);
-    for (key, value) in rect.iter_pairs() {
-        match key.to_symbol().as_str() {
-            "x" => r.x = value.to_f64() as u16,
-            "y" => r.y = value.to_f64() as u16,
-            "width" => r.width = value.to_f64() as u16,
-            "height" => r.height = value.to_f64() as u16,
-            _ => (),
-        }
-    }
-    r
+unsafe fn scm_area_from_scm(rect: Scm) -> Rect {
+    Rect::new(
+        rect.struct_ref(scm_const::X).to_f64() as u16,
+        rect.struct_ref(scm_const::Y).to_f64() as u16,
+        rect.struct_ref(scm_const::WIDTH).to_f64() as u16,
+        rect.struct_ref(scm_const::HEIGHT).to_f64() as u16,
+    )
 }
 
 unsafe fn scm_rect_to_alist(rect: Rect) -> Scm {
@@ -183,57 +178,35 @@ unsafe fn scm_rect_to_alist(rect: Rect) -> Scm {
 
 unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
     {
-        let mut has_buffer = false;
-        let mut rope = None;
-        let mut area = Rect::new(0, 0, 0, 0);
+        let scm_buffer = window.struct_ref(scm_const::BUFFER);
+        let scm_rope = scm_buffer.struct_ref(scm_const::ROPE);
+        let scm_area = window.struct_ref(scm_const::AREA);
+        let scm_features = window.struct_ref(scm_const::FEATURES);
+        let rope = Rope::from_scm_mut(scm_rope).unwrap();
+        let area = scm_area_from_scm(scm_area);
+
         let mut border = false;
         let mut line_numbers = false;
         let mut cursor = CursorPosition::None;
         let mut title = None;
-        for (key, value) in window.iter_pairs() {
-            match key.to_symbol().as_str() {
-                "buffer" => {
-                    has_buffer = true;
-                    for (key, value) in value.iter_pairs() {
-                        match key.to_symbol().as_str() {
-                            "rope" => rope = Some(Rope::from_scm_mut(value).unwrap()),
-                            _ => (),
-                        }
+        for (feature, value) in scm_features.iter_pairs() {
+            match feature.to_symbol().as_str() {
+                "border?" => border = value.to_bool(),
+                "line-numbers?" => line_numbers = value.to_bool(),
+                "cursor?" => {
+                    if value.is_number() {
+                        cursor = CursorPosition::EndOfLine(value.to_u32() as usize);
+                    } else if value.to_bool() {
+                        cursor = CursorPosition::EndOfText;
+                    } else {
+                        cursor = CursorPosition::None;
                     }
                 }
-                "position" => area = scm_rect_from_alist(value),
-                "features" => {
-                    for (feature, value) in value.iter_pairs() {
-                        match feature.to_symbol().as_str() {
-                            "border?" => border = value.to_bool(),
-                            "line-numbers?" => line_numbers = value.to_bool(),
-                            "cursor?" => {
-                                if value.is_number() {
-                                    cursor = CursorPosition::EndOfLine(value.to_u32() as usize);
-                                } else if value.to_bool() {
-                                    cursor = CursorPosition::EndOfText;
-                                } else {
-                                    cursor = CursorPosition::None;
-                                }
-                            }
-                            "title" => title = Some(value.to_string()),
-                            _ => (),
-                        }
-                    }
-                }
+                "title" => title = Some(value.to_string()),
                 _ => (),
             }
         }
-        let rope = match rope {
-            Some(r) => r,
-            None => {
-                if has_buffer {
-                    throw_error("window does not contain a buffer")
-                } else {
-                    throw_error("buffer does not contain a rope")
-                }
-            }
-        };
+
         rope.update_highlights();
         Window {
             rope,

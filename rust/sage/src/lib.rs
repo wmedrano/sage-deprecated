@@ -4,6 +4,7 @@ use flashkick::module::{Module, ModuleInitContext};
 
 mod event;
 pub mod rope;
+mod scm_const;
 pub mod theme;
 mod tui;
 

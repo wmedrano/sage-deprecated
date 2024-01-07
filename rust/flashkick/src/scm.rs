@@ -335,6 +335,15 @@ impl Scm {
         self.iter().map(|pair| (pair.car(), pair.cdr()))
     }
 
+    /// Get the give slot for the struct.
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn struct_ref(self, field_idx: usize) -> Scm {
+        let v = ffi::scm_struct_ref(self.0, Scm::new_u16(field_idx as u16).0);
+        Scm(v)
+    }
+
     /// Return the `k`th element of the list. Equivalent to calling `(list-ref self k)` in Scheme.
     ///
     /// # Safety

@@ -2,6 +2,7 @@
 !#
 (add-to-load-path ".")
 (use-modules
+ ((sage core rect)   #:prefix rect:)
  ((sage core buffer) #:prefix buffer:)
  ((sage core rope)   #:prefix rope:)
  ((sage core tui)    #:prefix tui:)
@@ -11,10 +12,10 @@
  (srfi srfi-1))
 
 (define* (resize-windows! width height)
-  (window:window-set-position! (first (state:windows))
-                               (window:make-position 0 (- height 1) width 1))
-  (window:window-set-position! (second (state:windows))
-                               (window:make-position 0 0 width (- height 1))))
+  (window:window-set-area! (first (state:windows))
+                           (rect:make-rect 0 (- height 1) width 1))
+  (window:window-set-area! (second (state:windows))
+                           (rect:make-rect 0 0 width (- height 1))))
 
 (define* (handle-events! event)
   "Handle all ctrl keys."
@@ -49,7 +50,7 @@
    (window:make-window #:buffer (buffer:make-buffer
                                  #:rope (rope:make-rope #:text     ";; Welcome to Sage!\n\n"
                                                         #:language "scheme"))
-                       #:position (window:make-position 0 1 80 24)
+                       #:area     (rect:make-rect 0 1 80 24)
                        #:features '((editable?     . #t)
                                     (border?       . #t)
                                     (title         . "*scratch*")
@@ -59,7 +60,7 @@
   (state:add-window!
    (window:make-window
     #:buffer (buffer:make-buffer #:rope (rope:make-rope #:text "Sage | Status OK"))
-    #:position '(window:make-position 0 0 0 0)))
+    #:area     '(rect:make-rect 0 0 0 0)))
   (add-hook! state:event-hook handle-events!)
   (add-hook! state:resize-hook resize-windows!))
 
