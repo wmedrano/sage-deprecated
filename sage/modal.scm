@@ -22,7 +22,8 @@
   (define window (window:make-window
                   #:rope     rope
                   #:position (modal-position (state:frame-width) (state:frame-height))
-                  #:features '((border? . #t))))
+                  #:features '((border? . #t)
+                               (cursor? . 0))))
   (define cleanup-hook (make-hook))
   (define (cleanup!)
     (run-hook cleanup-hook)

@@ -18,6 +18,7 @@ use crate::rope::Rope;
 
 use self::{
     backend::{BackendType, TerminalBackend},
+    widgets::CursorPosition,
     window::Window,
 };
 
@@ -128,35 +129,7 @@ extern "C" fn scm_tui_draw(tui: Scm, windows: Scm) -> Scm {
         let tui = Tui::from_scm_mut(tui).unwrap();
         let windows: Vec<_> = windows
             .iter()
-            .map(|window| {
-                let mut rope = None;
-                let mut area = Rect::new(0, 0, 0, 0);
-                let mut border = false;
-                let mut line_numbers = false;
-                for (key, value) in window.iter_pairs() {
-                    match key.to_symbol().as_str() {
-                        "rope" => rope = Some(Rope::from_scm_mut(value).unwrap()),
-                        "position" => area = scm_rect_from_alist(value),
-                        "features" => {
-                            for (feature, value) in value.iter_pairs() {
-                                match feature.to_symbol().as_str() {
-                                    "border?" => border = value.to_bool(),
-                                    "line-numbers?" => line_numbers = value.to_bool(),
-                                    _ => (),
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                rope.as_mut().unwrap().update_highlights();
-                Window {
-                    rope: rope.unwrap(),
-                    area,
-                    border,
-                    line_numbers,
-                }
-            })
+            .map(|window| scm_window_from_alist(window))
             .collect();
         let frame_size = tui.draw(windows.into_iter().rev()).scm_unwrap();
         scm_rect_to_alist(frame_size)
@@ -206,4 +179,47 @@ unsafe fn scm_rect_to_alist(rect: Rect) -> Scm {
         (Scm::new_symbol("width"), Scm::new_u16(rect.width)),
         (Scm::new_symbol("height"), Scm::new_u16(rect.height)),
     ])
+}
+
+unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
+    {
+        let mut rope = None;
+        let mut area = Rect::new(0, 0, 0, 0);
+        let mut border = false;
+        let mut line_numbers = false;
+        let mut cursor = CursorPosition::None;
+        for (key, value) in window.iter_pairs() {
+            match key.to_symbol().as_str() {
+                "rope" => rope = Some(Rope::from_scm_mut(value).unwrap()),
+                "position" => area = scm_rect_from_alist(value),
+                "features" => {
+                    for (feature, value) in value.iter_pairs() {
+                        match feature.to_symbol().as_str() {
+                            "border?" => border = value.to_bool(),
+                            "line-numbers?" => line_numbers = value.to_bool(),
+                            "cursor?" => {
+                                if value.is_number() {
+                                    cursor = CursorPosition::EndOfLine(value.to_u32() as usize);
+                                } else if value.to_bool() {
+                                    cursor = CursorPosition::EndOfText;
+                                } else {
+                                    cursor = CursorPosition::None;
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
+        rope.as_mut().unwrap().update_highlights();
+        Window {
+            rope: rope.unwrap(),
+            area,
+            border,
+            line_numbers,
+            cursor,
+        }
+    }
 }

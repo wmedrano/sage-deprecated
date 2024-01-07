@@ -47,7 +47,8 @@
                                               #:language "rust")
                        #:position (window:make-position 0 1 80 24)
                        #:features '((editable?     . #t)
-                                    (line-numbers? . #t)))
+                                    (line-numbers? . #t)
+                                    (cursor?       . #t)))
    #:set-focus? #t)
   (state:add-window!
    (window:make-window

@@ -6,7 +6,7 @@ use ratatui::{
 
 use crate::rope::Rope;
 
-use super::widgets::SyntaxHighlightedText;
+use super::widgets::{CursorPosition, SyntaxHighlightedText};
 
 /// Defines a window on the screen.
 pub struct Window<'a> {
@@ -18,6 +18,8 @@ pub struct Window<'a> {
     pub border: bool,
     /// True if line numbers should be rendered.
     pub line_numbers: bool,
+    /// Where the cursor should be rendered.
+    pub cursor: CursorPosition,
 }
 
 impl<'a> Window<'a> {
@@ -40,6 +42,11 @@ impl<'a> Widget for Window<'a> {
         let inner_area = block.inner(area);
         block.render(area, buf);
         // 3. Render the text.
-        SyntaxHighlightedText::new(self.rope, self.line_numbers).render(inner_area, buf);
+        SyntaxHighlightedText {
+            text: self.rope,
+            line_numbers: self.line_numbers,
+            cursor: self.cursor,
+        }
+        .render(inner_area, buf);
     }
 }
