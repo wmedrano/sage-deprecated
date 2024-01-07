@@ -15,4 +15,5 @@ crossterm = "0.27"
 flashkick = { path = "../flashkick" }
 ratatui = "0.25"
 tree-sitter = "0.20"
+tree-sitter-scheme = { git = "https://github.com/6cdh/tree-sitter-scheme.git" }
 tree-sitter-rust = "0.20"

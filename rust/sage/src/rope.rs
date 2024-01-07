@@ -220,11 +220,13 @@ extern "C" fn scm_rope_set_language(rope: Scm, language: Scm) -> Scm {
         let language_str = language.to_string();
         let language = match language_str.as_str() {
             "rust" => Some(tree_sitter_rust::language()),
+            "scheme" => Some(tree_sitter_scheme::language()),
             "" => None,
             _ => panic!("Unknown language {language_str}",),
         };
         let highlights = match language_str.as_str() {
             "rust" => tree_sitter_rust::HIGHLIGHT_QUERY,
+            "scheme" => tree_sitter_scheme::HIGHLIGHTS_QUERY,
             _ => "",
         };
         rope.set_language(language, highlights);

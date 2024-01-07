@@ -73,6 +73,8 @@
   (cond
    ((string-suffix? ".rs" path)
     "rust")
+   ((string-suffix? ".scm" path)
+    "scheme")
    (else
     "")))
 

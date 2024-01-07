@@ -483,6 +483,7 @@ dependencies = [
  "ratatui",
  "tree-sitter",
  "tree-sitter-rust",
+ "tree-sitter-scheme",
 ]
 
 [[package]]
@@ -608,6 +609,15 @@ name = "tree-sitter-rust"
 version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0832309b0b2b6d33760ce5c0e818cb47e1d72b468516bfe4134408926fa7594"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-scheme"
+version = "0.6.0"
+source = "git+https://github.com/6cdh/tree-sitter-scheme.git#85b6188fb77c03dfb01d13e58e2844450506860c"
 dependencies = [
  "cc",
  "tree-sitter",
