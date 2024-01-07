@@ -6,6 +6,7 @@
             rope-byte-length
             rope-clear!
             rope-delete!
+            rope-set-string!
             rope-insert!
             rope-pop!
             rope-replace!
@@ -68,6 +69,11 @@
   "Replace the contents between start (inclusive) and end (exclusive)
 with string-or-char."
   (ffi:rope-replace! rope start end string-or-char))
+
+(define* (rope-set-string! rope string)
+  "Sets the string for the rope."
+  (rope-clear! rope)
+  (rope-append! rope string))
 
 (define* (rope-set-language! rope language)
   "Set the language for the rope. Valid values are empty string for no
