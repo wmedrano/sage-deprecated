@@ -4,36 +4,34 @@
 (use-modules ((sage core tui)    #:prefix tui:)
              ((sage core window) #:prefix window:)
              ((sage state)       #:prefix state:)
-             ((sage core event)  #:prefix event:)
              ((sage core rope)   #:prefix rope:)
+             ((sage modal)       #:prefix modal:)
              (srfi srfi-1))
 
 (define* (resize-windows! width height)
   (window:window-set-position! (first (state:windows))
-                               #:x 0
-                               #:y (- height 1)
-                               #:width width
-                               #:height 1)
+                               (window:make-position 0 (- height 1) width 1))
   (window:window-set-position! (second (state:windows))
-                               #:x 0
-                               #:y 0
-                               #:width width
-                               #:height (- height 1)))
+                               (window:make-position 0 0 width (- height 1))))
 
 (define* (handle-events! event)
   "Handle all ctrl keys."
-  (let* ((rope     (window:window-rope (state:focused-window)))
-         (key-code (assoc-ref event 'key-code))
-         (ctrl?    (assoc-ref event 'ctrl?))
-         (alt?     (assoc-ref event 'alt?))
-         (mod?     (or ctrl? alt?))
-         (no-mod?  (not mod?)))
-    (when (and no-mod? (char? key-code))
-      (rope:rope-append! rope key-code))
-    (when (and no-mod? (equal? key-code "<backspace>"))
-      (rope:rope-pop! rope))
-    (when (and ctrl? (equal? key-code #\c))
-      (state:quit!))))
+  (let* ((window    (state:focused-window))
+         (editable? (window:window-feature window 'editable?))
+         (rope      (window:window-rope window))
+         (key-code  (assoc-ref event 'key-code))
+         (ctrl?     (assoc-ref event 'ctrl?))
+         (alt?      (assoc-ref event 'alt?))
+         (mod?      (or ctrl? alt?))
+         (no-mod?   (not mod?)))
+    (when (and editable? no-mod?)
+      (cond
+       ((char? key-code) (rope:rope-append! rope key-code))
+       ((equal? key-code "<backspace>") (rope:rope-pop! rope))))
+    (when (and ctrl? (not alt?))
+      (cond
+       ((equal? key-code #\c) (state:quit!))
+       ((equal? key-code #\o) (modal:open-file!))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main.
@@ -44,11 +42,11 @@
   (reset-hook! state:quit-hook)
   (for-each state:remove-window! (state:windows))
 
-  (state:set-tui! (tui:make-tui #:backend 'terminal))
   (state:add-window!
    (window:make-window #:rope (rope:make-rope #:text     "fn main() {\n}"
                                               #:language "rust")
-                       #:position (window:make-position 0 1 80 24))
+                       #:position (window:make-position 0 1 80 24)
+                       #:features '((editable? . #t)))
    #:set-focus? #t)
   (state:add-window!
    (window:make-window
@@ -60,12 +58,4 @@
 (define (main . args)
   "Run sage."
   (initialize!)
-  (event:run-event-loop #:tui          (state:tui)
-                        #:windows      state:windows
-                        #:should-run-p state:tui
-                        #:event-queue  event:events-from-terminal
-                        #:on-event     state:run-event-hook
-                        #:on-resize    state:run-resize-hook
-                        #:on-cleanup   state:quit!))
-
-(main)
+  (state:run! (tui:make-tui #:backend 'terminal)))

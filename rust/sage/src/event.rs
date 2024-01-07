@@ -32,6 +32,7 @@ unsafe fn to_scm_event(e: event::Event) -> Option<Scm> {
                 event::KeyCode::Enter => Scm::new_char('\n'),
                 event::KeyCode::Tab => Scm::new_char('\t'),
                 event::KeyCode::Backspace => Scm::new_string("<backspace>"),
+                event::KeyCode::Esc => Scm::new_string("<esc>"),
                 _ => return None,
             };
             let ctrl = Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL));
