@@ -179,6 +179,7 @@ unsafe fn scm_rect_to_alist(rect: Rect) -> Scm {
 unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
     {
         let scm_buffer = window.struct_ref(scm_const::BUFFER);
+        let scm_cursor = scm_buffer.struct_ref(scm_const::CURSOR);
         let scm_rope = scm_buffer.struct_ref(scm_const::ROPE);
         let scm_area = window.struct_ref(scm_const::AREA);
         let scm_features = window.struct_ref(scm_const::FEATURES);
@@ -187,21 +188,16 @@ unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
 
         let mut border = false;
         let mut line_numbers = false;
-        let mut cursor = CursorPosition::None;
+        let cursor = if scm_cursor.is_number() {
+            CursorPosition::Byte(scm_cursor.to_u32() as usize)
+        } else {
+            CursorPosition::None
+        };
         let mut title = None;
         for (feature, value) in scm_features.iter_pairs() {
             match feature.to_symbol().as_str() {
                 "border?" => border = value.to_bool(),
                 "line-numbers?" => line_numbers = value.to_bool(),
-                "cursor?" => {
-                    if value.is_number() {
-                        cursor = CursorPosition::EndOfLine(value.to_u32() as usize);
-                    } else if value.to_bool() {
-                        cursor = CursorPosition::EndOfText;
-                    } else {
-                        cursor = CursorPosition::None;
-                    }
-                }
                 "title" => title = Some(value.to_string()),
                 _ => (),
             }

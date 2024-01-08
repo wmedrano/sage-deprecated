@@ -29,4 +29,7 @@ jobs:
       - name: Rust Test
         run: cargo test
       - name: Scheme Build
-        run: guild compile sage/core/*
+        run: guild compile sage/core/*.scm sage/*.scm
+      - name: Scheme Tests
+        run: |
+          guile sage/tests/rope-tests.scm

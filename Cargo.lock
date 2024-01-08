@@ -118,15 +118,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crop"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f7cba78cdac608a5e2e645de47e566c0f63e1b6110318736581ec97d5669767"
-dependencies = [
- "str_indices",
-]
-
-[[package]]
 name = "crossterm"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -448,6 +439,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 
 [[package]]
+name = "ropey"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93411e420bcd1a75ddd1dc3caf18c23155eda2c090631a85af21ba19e97093b5"
+dependencies = [
+ "smallvec",
+ "str_indices",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -477,10 +478,10 @@ name = "sage"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "crop",
  "crossterm",
  "flashkick",
  "ratatui",
+ "ropey",
  "tree-sitter",
  "tree-sitter-rust",
  "tree-sitter-scheme",

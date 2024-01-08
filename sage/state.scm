@@ -4,6 +4,7 @@
             resize-hook
             quit-hook
 
+            add-task!
             add-window!
             focused-window
             frame-height
@@ -29,6 +30,9 @@
 ;; new width and height.
 (define resize-hook (make-hook 2))
 
+(define %tasks (make-hook))
+
+;; Called when the sage will quit.
 (define quit-hook (make-hook))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -92,6 +96,16 @@ no window will have focus."
   (set! %focused-window window))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tasks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define* (add-task! task)
+  (add-hook! %tasks task))
+
+(define* (%run-tasks!)
+  (run-hook %tasks)
+  (reset-hook! %tasks))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The main program.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (run! tui)
@@ -105,7 +119,10 @@ no window will have focus."
                 (assoc-ref frame-size 'height))))
   (define (run-loop-iteration!)
     (let handle-all-events ((events (internal:events-from-terminal)))
-      (for-each (lambda (e) (run-hook event-hook e)) events)
+      (for-each (lambda (e)
+                  (run-hook event-hook e)
+                  (%run-tasks!))
+                events)
       (if (pair? events) (handle-all-events (internal:events-from-terminal))))
     (let ((frame-size (and %tui
                            (tui:tui-draw! %tui (windows)))))

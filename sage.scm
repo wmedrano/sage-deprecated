@@ -22,6 +22,7 @@
   (let* ((window    (state:focused-window))
          (editable? (window:window-feature window 'editable?))
          (buffer    (window:window-buffer window))
+         (cursor    (buffer:buffer-cursor buffer))
          (rope      (buffer:buffer-rope buffer))
          (key-code  (assoc-ref event 'key-code))
          (ctrl?     (assoc-ref event 'ctrl?))
@@ -30,8 +31,14 @@
          (no-mod?   (not mod?)))
     (when (and editable? no-mod?)
       (cond
-       ((char? key-code) (rope:rope-append! rope key-code))
-       ((equal? key-code "<backspace>") (rope:rope-pop! rope))))
+       ((char? key-code)
+        (buffer:buffer-insert-at-cursor! buffer key-code))
+       ((equal? key-code "<backspace>")
+        (buffer:buffer-delete-char-before-cursor! buffer))
+       ((and (equal? key-code "<left>") (> cursor 0))
+        (buffer:buffer-set-cursor! buffer (- cursor 1)))
+       ((and (equal? key-code "<right>") (< cursor (rope:rope-length rope)))
+        (buffer:buffer-set-cursor! buffer (+ cursor 1)))))
     (when (and ctrl? (not alt?))
       (cond
        ((equal? key-code #\c) (state:quit!))
@@ -48,14 +55,14 @@
 
   (state:add-window!
    (window:make-window #:buffer (buffer:make-buffer
-                                 #:rope (rope:make-rope #:text     ";; Welcome to Sage!\n\n"
-                                                        #:language "scheme"))
+                                 #:cursor 0
+                                 #:rope   (rope:make-rope #:text     ";; Welcome to Sage!\n\n"
+                                                          #:language "scheme"))
                        #:area     (rect:make-rect 0 1 80 24)
                        #:features '((editable?     . #t)
                                     (border?       . #t)
                                     (title         . "*scratch*")
-                                    (line-numbers? . #t)
-                                    (cursor?       . #t)))
+                                    (line-numbers? . #t)))
    #:set-focus? #t)
   (state:add-window!
    (window:make-window
@@ -64,7 +71,10 @@
   (add-hook! state:event-hook handle-events!)
   (add-hook! state:resize-hook resize-windows!))
 
+(define* (run!)
+  (state:run! (tui:make-tui #:backend 'terminal)))
+
 (define (main . args)
   "Run sage."
   (initialize!)
-  (state:run! (tui:make-tui #:backend 'terminal)))
+  (run!))

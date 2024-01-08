@@ -20,14 +20,13 @@
   (define query "")
   (define matches items)
   (define target-window (state:focused-window))
-  (define rope   (rope:make-rope #:text (%make-modal-string prompt query matches)))
+  (define rope   (rope:make-rope))
   (define buffer (buffer:make-buffer #:rope rope))
   (define window (window:make-window
                   #:buffer   buffer
                   #:area     (modal-area (state:frame-width) (state:frame-height))
                   #:features '((border? . #t)
-                               (title   . "Open File")
-                               (cursor? . 0))))
+                               (title   . "Open File"))))
   (define cleanup-hook (make-hook))
   (define (cleanup!)
     (run-hook cleanup-hook)
@@ -36,6 +35,7 @@
     (set! query q)
     (set! matches (%filter-items-by-query items query))
     (rope:rope-set-string! rope (%make-modal-string prompt query matches)))
+  (set-query! "")
   (define (select!)
     (cleanup!)
     (when (pair? matches)
@@ -81,6 +81,8 @@
    (else
     "")))
 
+(define %debug-var "")
+
 (define* (open-file!)
   (define (on-select! file-path)
     (let ((window   (state:focused-window))
@@ -90,11 +92,14 @@
       (window:window-set-buffer!
        window
        (buffer:make-buffer #:file-path file-path
+                           #:cursor 0
                            #:rope (rope:make-rope #:text text
                                                   #:language language)))))
+  (define (deferred-on-select! file-path)
+    (state:add-task! (lambda () (on-select! file-path))))
   (run-modal! #:prompt "Open File: "
               #:items (%discover-files ".")
-              #:on-select on-select!))
+              #:on-select deferred-on-select!))
 
 (define* (%filter-items-by-query items query)
   (define (item-matches-all-subqueries? item subqueries)
@@ -109,7 +114,8 @@
     (string-concatenate (list " " item)))
   (let ((prompt-line (string-concatenate (list prompt query)))
         (item-lines  (map format-item matches)))
-    (string-join (cons prompt-line item-lines)
+    (string-join (cons prompt-line
+                       (if (null? item-lines) '("") item-lines))
                  "\n")))
 
 (define* (%discover-files root-dir)

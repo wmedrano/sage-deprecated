@@ -14,7 +14,7 @@ use crate::theme::{HighlightRange, SyntaxTheme};
 
 /// Implements a rope datastructure for efficiently editing text.
 pub struct Rope {
-    inner: crop::Rope,
+    inner: ropey::Rope,
     parser: Option<Parser>,
     tree: Option<Tree>,
     syntax_theme: Option<SyntaxTheme>,
@@ -22,14 +22,14 @@ pub struct Rope {
 }
 
 impl ForeignObjectType for Rope {
-    const NAME: &'static str = "sage-rope";
+    const NAME: &'static str = "<sage-rope>";
 }
 
 impl Rope {
     /// Create a new rope.
     pub fn new() -> Rope {
         Rope {
-            inner: crop::Rope::new(),
+            inner: ropey::Rope::new(),
             parser: None,
             tree: None,
             syntax_theme: None,
@@ -37,13 +37,16 @@ impl Rope {
         }
     }
 
-    /// Replace the contents within `byte_range` with `text`.
-    pub fn replace<T>(&mut self, byte_range: Range<usize>, text: T)
+    /// Replace the contents within `byte_range` with `text`. The new end point is returned.
+    pub fn replace<T>(&mut self, char_range: Range<usize>, text: T) -> usize
     where
         T: AsRef<str>,
     {
         let text = text.as_ref();
-        self.inner.replace(byte_range.clone(), text);
+        let byte_range =
+            self.inner.char_to_byte(char_range.start)..self.inner.char_to_byte(char_range.end);
+        self.inner.remove(char_range.clone());
+        self.inner.insert(char_range.start, text);
         if let Some(tree) = self.tree.as_mut() {
             tree.edit(&tree_sitter::InputEdit {
                 start_byte: byte_range.start,
@@ -55,6 +58,7 @@ impl Rope {
             });
             self.reparse();
         }
+        char_range.start + text.chars().count()
     }
 
     /// Get the tree for the rope.
@@ -85,6 +89,7 @@ impl Rope {
             if let (Some(theme), Some(tree)) = (self.syntax_theme.as_mut(), self.tree.as_ref()) {
                 self.highlights
                     .extend(theme.highlight(tree, RopeTextProvider(&self.inner)));
+                self.highlights.sort_by_key(|h| h.range.start)
             }
         }
     }
@@ -112,17 +117,17 @@ impl Rope {
 }
 
 impl Deref for Rope {
-    type Target = crop::Rope;
+    type Target = ropey::Rope;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-pub(crate) struct RopeTextProvider<'a>(&'a crop::Rope);
+pub(crate) struct RopeTextProvider<'a>(&'a ropey::Rope);
 
 impl<'a> tree_sitter::TextProvider<'a> for RopeTextProvider<'a> {
-    type I = std::iter::Map<crop::iter::Chunks<'a>, fn(&str) -> &[u8]>;
+    type I = std::iter::Map<ropey::iter::Chunks<'a>, fn(&str) -> &[u8]>;
 
     fn text(&mut self, node: tree_sitter::Node) -> Self::I {
         let start = node.start_byte();
@@ -153,8 +158,8 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
         1,
     );
     ctx.define_subr_1(
-        CStr::from_bytes_with_nul(b"rope-byte-length\0").unwrap(),
-        scm_rope_byte_length,
+        CStr::from_bytes_with_nul(b"rope-length\0").unwrap(),
+        scm_rope_length,
         1,
     );
     ctx.define_subr_4(
@@ -165,6 +170,16 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
     ctx.define_subr_2(
         CStr::from_bytes_with_nul(b"rope-set-language!\0").unwrap(),
         scm_rope_set_language,
+        2,
+    );
+    ctx.define_subr_2(
+        CStr::from_bytes_with_nul(b"rope-cursor->position\0").unwrap(),
+        scm_rope_cursor_to_position,
+        2,
+    );
+    ctx.define_subr_2(
+        CStr::from_bytes_with_nul(b"rope-position->cursor\0").unwrap(),
+        scm_rope_position_to_cursor,
         2,
     );
 }
@@ -187,12 +202,12 @@ extern "C" fn scm_rope_to_string(rope: Scm) -> Scm {
     .scm_unwrap()
 }
 
-extern "C" fn scm_rope_byte_length(rope: Scm) -> Scm {
+extern "C" fn scm_rope_length(rope: Scm) -> Scm {
     catch_unwind(|| unsafe {
         let rope = Rope::from_scm(rope).unwrap();
-        Scm::new_u32(rope.byte_len() as u32)
+        Scm::new_u32(rope.len_chars() as u32)
     })
-    .map_err(|_| "Rust panic encountered on rope->byte-length.")
+    .map_err(|_| "Rust panic encountered on rope-length.")
     .scm_unwrap()
 }
 
@@ -201,17 +216,17 @@ extern "C" fn scm_rope_replace(rope: Scm, start_byte: Scm, end_byte: Scm, text: 
         let rope = Rope::from_scm_mut(rope).unwrap();
         let start = start_byte.to_u32() as usize;
         let end = end_byte.to_u32() as usize;
-        if text.is_char() {
+        let new_end = if text.is_char() {
             let mut text_buffer = [0; 4];
             let char_str = text.to_char().unwrap().encode_utf8(&mut text_buffer);
-            rope.replace(start..end, char_str);
+            rope.replace(start..end, char_str)
         } else {
-            rope.replace(start..end, text.to_string());
-        }
+            rope.replace(start..end, text.to_string())
+        };
+        Scm::new_u32(new_end as u32)
     })
     .map_err(|_| "Rust panic encountered on rope-replace!.")
-    .scm_unwrap();
-    Scm::UNDEFINED
+    .scm_unwrap()
 }
 
 extern "C" fn scm_rope_set_language(rope: Scm, language: Scm) -> Scm {
@@ -234,6 +249,43 @@ extern "C" fn scm_rope_set_language(rope: Scm, language: Scm) -> Scm {
     .map_err(|_| "Rust panic encountered on rope-replace!.")
     .scm_unwrap();
     Scm::UNDEFINED
+}
+
+extern "C" fn scm_rope_cursor_to_position(rope: Scm, cursor: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm(rope).unwrap();
+        let cursor = cursor.to_u32() as usize;
+        if cursor >= rope.len_chars() {
+            return Scm::FALSE;
+        }
+        let row = rope.char_to_line(cursor);
+        let col = cursor - rope.line_to_char(row);
+        Scm::cons(Scm::new_u32(row as u32), Scm::new_u32(col as u32))
+    })
+    .map_err(|_| "Rust panic encountered on rope-cursor->position.")
+    .scm_unwrap()
+}
+
+extern "C" fn scm_rope_position_to_cursor(rope: Scm, position: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm(rope).unwrap();
+        let (row, col) = (
+            position.car().to_u32() as usize,
+            position.cdr().to_u32() as usize,
+        );
+        let line_count = rope.len_lines();
+        if row >= line_count {
+            return Scm::FALSE;
+        }
+        let line_length = rope.line(row).len_chars();
+        if col >= line_length {
+            return Scm::FALSE;
+        }
+        let cursor = rope.line_to_char(row) + col;
+        Scm::new_u32(cursor as u32)
+    })
+    .map_err(|_| "Rust panic encountered on rope-position->cursor.")
+    .scm_unwrap()
 }
 
 #[cfg(test)]

@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = "1.0"
-crop = "0.4"
+ropey = "1.6"
 crossterm = "0.27"
 flashkick = { path = "../flashkick" }
 ratatui = "0.25"

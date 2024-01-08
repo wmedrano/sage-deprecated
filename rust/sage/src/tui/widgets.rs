@@ -1,9 +1,6 @@
 use std::io::Write;
 
-use ratatui::{
-    style::{Color, Style},
-    widgets::Widget,
-};
+use ratatui::{style::Color, widgets::Widget};
 
 use crate::rope::Rope;
 
@@ -11,10 +8,8 @@ use crate::rope::Rope;
 pub enum CursorPosition {
     /// Do not render a cursor.
     None,
-    /// Render a cursor at the end of the text.
-    EndOfText,
-    /// Render a cursor at the end of the line with the given index.
-    EndOfLine(usize),
+    /// The byte position of the cursor.
+    Byte(usize),
 }
 
 pub struct SyntaxHighlightedText<'a> {
@@ -27,23 +22,21 @@ impl<'a> Widget for SyntaxHighlightedText<'a> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
         let highlights = self.text.highlights();
         let find_style = |b: usize| {
-            highlights
-                .iter()
-                .find(|h| h.range.contains(&b))
-                .map(|h| h.style)
-                .unwrap_or_else(Style::new)
+            for h in highlights.iter() {
+                if h.range.contains(&b) {
+                    return Some(h.style);
+                }
+                if h.range.start > b {
+                    return None;
+                }
+            }
+            None
         };
         let mut line_number_text = Vec::new();
-        let has_trailing_newline = self
-            .text
-            .chunks()
-            .next_back()
-            .map(|s| s.ends_with('\n'))
-            .unwrap_or(false);
-        let rope_lines = self.text.line_len() + if has_trailing_newline { 1 } else { 0 };
+        let rope_lines = self.text.len_lines();
         let mut line_text_iter = self.text.lines();
         for (line_idx, y) in (0..rope_lines).zip(area.y..area.bottom()) {
-            let mut byte_index = self.text.byte_of_line(line_idx);
+            let mut byte_index = self.text.line_to_byte(line_idx);
             let mut x = area.x;
             let mut width = area.width;
             // 1. Render line numbers.
@@ -79,27 +72,21 @@ impl<'a> Widget for SyntaxHighlightedText<'a> {
                         break;
                     }
                     let cell = buf.get_mut(x, y);
-                    cell.set_char(ch);
-                    cell.set_style(find_style(byte_index));
-                    byte_index += ch.len_utf8();
+                    let next_byte_index = byte_index + ch.len_utf8();
+                    if ch != '\n' {
+                        cell.set_char(ch);
+                    }
+                    if let Some(s) = find_style(byte_index) {
+                        cell.set_style(s);
+                    }
+                    if let CursorPosition::Byte(p) = self.cursor {
+                        if (byte_index..next_byte_index).contains(&p) {
+                            cell.set_bg(Color::White);
+                        }
+                    }
+                    byte_index = next_byte_index;
                     x += 1;
                     width -= 1;
-                }
-            }
-            // 3. Render the cursor.
-            match self.cursor {
-                CursorPosition::None => (),
-                CursorPosition::EndOfText => {
-                    if line_idx + 1 == rope_lines && width > 0 {
-                        let cell = buf.get_mut(x, y);
-                        cell.set_bg(Color::White);
-                    }
-                }
-                CursorPosition::EndOfLine(idx) => {
-                    if line_idx == idx && width > 0 {
-                        let cell = buf.get_mut(x, y);
-                        cell.set_bg(Color::White);
-                    }
                 }
             }
         }
