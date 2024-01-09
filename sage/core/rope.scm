@@ -11,6 +11,8 @@
             rope-position->cursor
             rope-cursor->position
             rope-set-string!
+            rope-line-count
+            rope-line-length
             ))
 (use-modules ((sage core internal) #:prefix ffi:)
              (srfi srfi-2))
@@ -26,24 +28,24 @@
       (rope-set-language! rope language))
     rope))
 
+(define* (rope-set-language! rope language)
+  "Set the language for the rope. Valid values are empty string for no
+language or rust."
+  (ffi:rope-set-language! rope language)
+  rope)
+
 (define* (rope->string rope)
   "Get the string representation in the rope."
   (ffi:rope->string rope))
 
-;; TODO: This does not handle UTF-8 well. If the bytes are replaced
-;; with invalid UTF-8, then the Rust portion will crash. The most
-;; common scenario is when editing part of a UTF-8 word. Example:
-;;   - rope-insert! a robot emoji(🤖) onto a rope.
-;;   - rope-delete! just the last byte of the robot emoji.
-;;   - See rust stack trace error: byte offset 11 is not a char boundary: it is inside '🤖' (bytes 8..12) of "🤖🤖🤖"
 (define* (rope-replace! rope start end string-or-char)
   "Replace the contents between start (inclusive) and end (exclusive)
-with string-or-char. The new end byte is returned"
+with string-or-char. The new end cursor is returned."
   (ffi:rope-replace! rope start end string-or-char))
 
 (define* (rope-insert! rope position string-or-char)
   "Insert string-or-char into the rope at position. Returns the new
-end byte index."
+end cursor."
   (rope-replace! rope position position string-or-char))
 
 (define* (rope-delete! rope start end)
@@ -55,17 +57,27 @@ end byte index."
   (rope-replace! rope 0 (rope-length rope) string))
 
 (define* (rope-length rope)
-  "Get the length of the rope in bytes."
+  "Get the length of the rope in number of characters."
   (ffi:rope-length rope))
 
 (define* (rope-position->cursor rope position)
+  "Convert a position to a cursor. A cursor is a character index
+within the rope.
+
+A position should be a pair in the format: (row-index . col-index)."
   (ffi:rope-position->cursor rope position))
 
 (define* (rope-cursor->position rope cursor)
+  "Convert a cursor to a position. A position is a (row-index
+. col-index) pair.
+
+A cursor is the character index within the rope."
   (ffi:rope-cursor->position rope cursor))
 
-(define* (rope-set-language! rope language)
-  "Set the language for the rope. Valid values are empty string for no
-language or rust."
-  (ffi:rope-set-language! rope language)
-  rope)
+(define* (rope-line-count rope)
+  "Returns the number of lines within the rope."
+  (ffi:rope-line-count rope))
+
+(define* (rope-line-length rope line)
+  "Returns the length of the given line."
+  (ffi:rope-line-length rope line))

@@ -5,8 +5,12 @@ use std::{
     panic::catch_unwind,
 };
 
+use anyhow::{anyhow, Result};
 use flashkick::{
-    err::ResultToScm, foreign_object::ForeignObjectType, module::ModuleInitContext, Scm,
+    err::{throw_error, ResultToScm},
+    foreign_object::ForeignObjectType,
+    module::ModuleInitContext,
+    Scm,
 };
 use tree_sitter::{Language, Parser, Point, Tree};
 
@@ -38,15 +42,18 @@ impl Rope {
     }
 
     /// Replace the contents within `byte_range` with `text`. The new end point is returned.
-    pub fn replace<T>(&mut self, char_range: Range<usize>, text: T) -> usize
+    pub fn replace<T>(&mut self, char_range: Range<usize>, text: T) -> Result<usize>
     where
         T: AsRef<str>,
     {
         let text = text.as_ref();
-        let byte_range =
-            self.inner.char_to_byte(char_range.start)..self.inner.char_to_byte(char_range.end);
-        self.inner.remove(char_range.clone());
-        self.inner.insert(char_range.start, text);
+        let byte_range_start = self.inner.try_char_to_byte(char_range.start)?;
+        let byte_range_end = self.inner.try_char_to_byte(char_range.end)?;
+        let byte_range = byte_range_start..byte_range_end;
+        self.inner.try_remove(char_range.clone())?;
+        // TODO: If try_remove succeeds in editing and try_insert fails, then the tree sitter tree
+        // may be invalid as tree.edit will not be called.
+        self.inner.try_insert(char_range.start, text)?;
         if let Some(tree) = self.tree.as_mut() {
             tree.edit(&tree_sitter::InputEdit {
                 start_byte: byte_range.start,
@@ -58,7 +65,7 @@ impl Rope {
             });
             self.reparse();
         }
-        char_range.start + text.chars().count()
+        Ok(char_range.start + text.chars().count())
     }
 
     /// Get the tree for the rope.
@@ -162,6 +169,16 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
         scm_rope_length,
         1,
     );
+    ctx.define_subr_1(
+        CStr::from_bytes_with_nul(b"rope-line-count\0").unwrap(),
+        scm_rope_line_count,
+        1,
+    );
+    ctx.define_subr_2(
+        CStr::from_bytes_with_nul(b"rope-line-length\0").unwrap(),
+        scm_rope_line_length,
+        2,
+    );
     ctx.define_subr_4(
         CStr::from_bytes_with_nul(b"rope-replace!\0").unwrap(),
         scm_rope_replace,
@@ -211,6 +228,32 @@ extern "C" fn scm_rope_length(rope: Scm) -> Scm {
     .scm_unwrap()
 }
 
+extern "C" fn scm_rope_line_count(rope: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm(rope).unwrap();
+        Scm::new_u32(rope.len_lines() as u32)
+    })
+    .map_err(|_| "Rust panic encountered on rope-length.")
+    .scm_unwrap()
+}
+
+extern "C" fn scm_rope_line_length(rope: Scm, line: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm(rope).unwrap();
+        let line_idx = line.to_u32() as usize;
+        let line_count = rope.len_lines();
+        if line_idx >= line_count {
+            throw_error(anyhow!(
+                "line {line_idx} is equal to or greater than line count {line_count}"
+            ));
+        }
+        let line = rope.line(line_idx);
+        Scm::new_u32(line.len_chars() as u32)
+    })
+    .map_err(|_| "Rust panic encountered on rope-length.")
+    .scm_unwrap()
+}
+
 extern "C" fn scm_rope_replace(rope: Scm, start_byte: Scm, end_byte: Scm, text: Scm) -> Scm {
     catch_unwind(|| unsafe {
         let rope = Rope::from_scm_mut(rope).unwrap();
@@ -219,9 +262,9 @@ extern "C" fn scm_rope_replace(rope: Scm, start_byte: Scm, end_byte: Scm, text: 
         let new_end = if text.is_char() {
             let mut text_buffer = [0; 4];
             let char_str = text.to_char().unwrap().encode_utf8(&mut text_buffer);
-            rope.replace(start..end, char_str)
+            rope.replace(start..end, char_str).scm_unwrap()
         } else {
-            rope.replace(start..end, text.to_string())
+            rope.replace(start..end, text.to_string()).scm_unwrap()
         };
         Scm::new_u32(new_end as u32)
     })

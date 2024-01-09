@@ -85,4 +85,45 @@
   (rope->string (make-rope #:text "(scheme-procedure (list example list for test )))))"
                            #:language "scheme")))
 
+(test-equal "rope-line-count on empty string is 1"
+  1
+  (rope-line-count (make-rope #:text "")))
+
+(test-equal "rope-line-count on string with no lines is 1"
+  1
+  (rope-line-count (make-rope #:text "my line")))
+
+(test-equal "rope-line-count on multiline string gives line count"
+  4
+  (rope-line-count (make-rope #:text "line 1\nline 2\n line 3\nline 4")))
+
+(test-equal "rope-line-length for empty line is 0"
+  0
+  (rope-line-length (make-rope #:text "")
+                    0))
+
+(test-error "rope-line-length out of bounds is error"
+  (rope-line-length (make-rope #:text "my line\nother line\n")
+                    100))
+
+(test-equal "rope-line-length on trailing line is 0"
+  0
+  (rope-line-length (make-rope #:text "my line\nother line\n")
+                    2))
+
+(test-equal "rope-line-length on final line is accurate"
+  4
+  (rope-line-length (make-rope #:text "my line\nother line\n1234")
+                    2))
+
+(test-equal "rope-line-length on a middle line is ok"
+  8
+  (rope-line-length (make-rope #:text "my line\nother line\n1234567\nthis is the last one\n")
+                    2))
+
+(test-equal "rope-line-length on line before trailing new line includes newline"
+  5
+  (rope-line-length (make-rope #:text "my line\nother line\n1234\n")
+                    2))
+
 (test-end %test-suite-name)
