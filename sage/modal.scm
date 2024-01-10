@@ -42,25 +42,26 @@
     (cleanup!)
     (when (pair? matches)
       (on-select (car matches))))
-  (define (handle-event! event)
-    (let* ((key-code  (assoc-ref event 'key-code))
-           (ctrl?     (assoc-ref event 'ctrl?))
-           (alt?      (assoc-ref event 'alt?))
-           (mod?      (or ctrl? alt?))
-           (no-mod?   (not mod?)))
-      (when no-mod?
-        (cond
-         ((equal? key-code #\newline)
-          (select!))
-         ((char? key-code)
-          (set-query! (string-append query
-                                     (list->string (list key-code)))))
-         ((and (equal? key-code "<backspace>") (> (string-length query) 0))
-          (set-query! (substring query
-                                 0
-                                 (- (string-length query) 1))))
-         ((equal? key-code "<esc>")
-          (cleanup!))))))
+  (define (handle-event! w b event)
+    (when (and (eq? window w) (eq? buffer b))
+      (let* ((key-code  (assoc-ref event 'key-code))
+             (ctrl?     (assoc-ref event 'ctrl?))
+             (alt?      (assoc-ref event 'alt?))
+             (mod?      (or ctrl? alt?))
+             (no-mod?   (not mod?)))
+        (when no-mod?
+          (cond
+           ((equal? key-code #\newline)
+            (select!))
+           ((char? key-code)
+            (set-query! (string-append query
+                                       (list->string (list key-code)))))
+           ((and (equal? key-code "<backspace>") (> (string-length query) 0))
+            (set-query! (substring query
+                                   0
+                                   (- (string-length query) 1))))
+           ((equal? key-code "<esc>")
+            (cleanup!)))))))
   (add-hook! state:event-hook handle-event!)
   (add-hook! cleanup-hook (lambda ()
                             (remove-hook! state:event-hook handle-event!)))

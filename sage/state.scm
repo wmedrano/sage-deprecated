@@ -16,15 +16,18 @@
             tui
             windows
             ))
-(use-modules ((sage core tui)      #:prefix tui:)
-             ((sage core internal) #:prefix internal:))
+(use-modules ((sage core window)   #:prefix window:)
+             ((sage core tui)      #:prefix tui:)
+             ((sage core internal) #:prefix internal:)
+             (srfi srfi-2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Hooks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Called for each event.
-(define event-hook (make-hook 1))
+;; Called on the focused window for each event. The procedure must be
+;; of the form: (proc window buffer event)
+(define event-hook (make-hook 3))
 
 ;; Called when the terminal window is resized. The parameters are the
 ;; new width and height.
@@ -120,7 +123,9 @@ no window will have focus."
   (define (run-loop-iteration!)
     (let handle-all-events ((events (internal:events-from-terminal)))
       (for-each (lambda (e)
-                  (run-hook event-hook e)
+                  (and-let* ((window %focused-window)
+                             (buffer (window:window-buffer window)))
+                    (run-hook event-hook window buffer e))
                   (%run-tasks!))
                 events)
       (if (pair? events) (handle-all-events (internal:events-from-terminal))))

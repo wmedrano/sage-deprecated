@@ -17,11 +17,9 @@
   (window:window-set-area! (second (state:windows))
                            (rect:make-rect 0 0 width (- height 1))))
 
-(define* (handle-events! event)
-  "Handle all ctrl keys."
-  (let* ((window    (state:focused-window))
-         (editable? (window:window-feature window 'editable?))
-         (buffer    (window:window-buffer window))
+(define* (handle-events! window buffer event)
+  "Handle all events."
+  (let* ((editable? (window:window-feature window 'editable?))
          (cursor    (buffer:buffer-cursor buffer))
          (rope      (buffer:buffer-rope buffer))
          (key-code  (assoc-ref event 'key-code))
