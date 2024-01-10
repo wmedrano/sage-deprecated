@@ -1,4 +1,4 @@
-(define-module (sage modal)
+(define-module (sage builtin modal)
   #:export (run-modal! open-file! switch-buffer! select-command!))
 (use-modules
  ((sage core buffer) #:prefix buffer:)
@@ -117,6 +117,7 @@
                       #:rope (rope:make-rope #:text text
                                              #:language language))))
       (state:add-buffer! buffer)
+      ;; TODO: Move this to a hook.
       (window:window-set-feature! window 'title file-path)
       (window:window-set-buffer!
        window

@@ -20,6 +20,7 @@
             windows
             ))
 (use-modules ((sage core window)   #:prefix window:)
+             ((sage core log)      #:prefix log:)
              ((sage core tui)      #:prefix tui:)
              ((sage core internal) #:prefix internal:)
              (srfi srfi-2))
@@ -146,7 +147,7 @@ registered, then do nothing."
       (run-hook resize-hook
                 (assoc-ref frame-size 'width)
                 (assoc-ref frame-size 'height))))
-  (define (run-loop-iteration!)
+  (define (handle-all-events)
     (let handle-all-events ((events (internal:events-from-terminal)))
       (for-each (lambda (e)
                   (and-let* ((window %focused-window)
@@ -154,7 +155,12 @@ registered, then do nothing."
                     (run-hook event-hook window buffer e))
                   (%run-tasks!))
                 events)
-      (if (pair? events) (handle-all-events (internal:events-from-terminal))))
+      (if (pair? events) (handle-all-events (internal:events-from-terminal)))))
+  (define (run-loop-iteration!)
+    (with-exception-handler
+        (lambda (ex) (log:log! "Encountered exception " ex))
+      (handle-all-events)
+      #:unwind? #t)
     (let ((frame-size (and %tui
                            (tui:tui-draw! %tui (windows)))))
       (when (and %tui (not (equal? frame-size %tui-frame-size)))

@@ -2,13 +2,14 @@
 !#
 (add-to-load-path ".")
 (use-modules
- ((sage core rect)   #:prefix rect:)
- ((sage core buffer) #:prefix buffer:)
- ((sage core rope)   #:prefix rope:)
- ((sage core tui)    #:prefix tui:)
- ((sage core window) #:prefix window:)
- ((sage modal)       #:prefix modal:)
- ((sage state)       #:prefix state:)
+ ((sage core rect)     #:prefix rect:)
+ ((sage core buffer)   #:prefix buffer:)
+ ((sage core rope)     #:prefix rope:)
+ ((sage core tui)      #:prefix tui:)
+ ((sage core window)   #:prefix window:)
+ ((sage builtin modal) #:prefix modal:)
+ ((sage state)         #:prefix state:)
+ ((sage core log)      #:prefix log:)
  (srfi srfi-1))
 
 (define* (resize-windows! width height)
@@ -16,6 +17,10 @@
                            (rect:make-rect 0 (- height 1) width 1))
   (window:window-set-area! (second (state:windows))
                            (rect:make-rect 0 0 width (- height 1))))
+
+(define* (switch-to-log-buffer!)
+  (window:window-set-buffer! (state:focused-window)
+                             (log:log-buffer)))
 
 (define* (handle-events! window buffer event)
   "Handle all events."
@@ -48,6 +53,8 @@
        ((equal? key-code #\p) (modal:select-command!
                                `(("open-file"     . ,modal:open-file!)
                                  ("switch-buffer" . ,modal:switch-buffer!)
+                                 ("view-logs"     . ,switch-to-log-buffer!)
+                                 ("clear-logs"    . ,log:clear-logs!)
                                  ("quit"          . ,state:quit!))))
        ((equal? key-code #\o) (modal:open-file!))
        ((equal? key-code #\c) (state:quit!))
@@ -62,6 +69,7 @@
   (reset-hook! state:quit-hook)
   (for-each state:remove-window! (state:windows))
 
+  ;; Create initial windows.
   (state:add-window!
    (window:make-window #:buffer (buffer:make-buffer
                                  #:name "**scratch**"
@@ -79,8 +87,15 @@
     #:buffer (buffer:make-buffer #:name "**status-bar**"
                                  #:rope (rope:make-rope #:text "Sage | Status OK"))
     #:area     '(rect:make-rect 0 0 0 0)))
+
+  ;; Initialize logging
+  (state:add-buffer! (log:log-buffer))
+
+  ;; Set hooks
   (add-hook! state:event-hook handle-events!)
-  (add-hook! state:resize-hook resize-windows!))
+  (add-hook! state:resize-hook resize-windows!)
+  (add-hook! state:resize-hook (lambda (width height)
+                                 (log:log! "Resized window to " width " " height "."))))
 
 (define* (run!)
   (state:run! (tui:make-tui #:backend 'terminal)))

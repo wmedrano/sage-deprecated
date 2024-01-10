@@ -28,7 +28,7 @@
 
 (define* (make-buffer #:key
                       name
-                      rope
+                      (rope      (rope:make-rope))
                       (cursor    #f)
                       (file-path ""))
   "Make a new buffer."
