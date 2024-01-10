@@ -4,6 +4,9 @@
             resize-hook
             quit-hook
 
+            buffers
+            remove-buffer!
+            add-buffer!
             add-task!
             add-window!
             focused-window
@@ -69,14 +72,17 @@
   "Get a list of the current windows."
   %windows)
 
-(define* (add-window! window #:key set-focus?)
+(define* (add-window! window
+                      #:key
+                      (set-focus?       #f))
   "Add a new window and return it.
 
-If set-focus? is #t, then the window will also become the new focused
-window."
+set-focus? - If true, then the window will automatically be focused.
+"
   (set! %windows (cons window %windows))
   (when set-focus?
     (set-focused-window! window))
+  (add-buffer! (window:window-buffer window))
   window)
 
 (define* (remove-window! window)
@@ -97,6 +103,26 @@ window."
   "Set the focused window to window. Window can be #f, in which case
 no window will have focus."
   (set! %focused-window window))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Buffers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define* %buffers '())
+
+(define* (buffers)
+  "Get a list of all the registered buffers."
+  %buffers)
+
+(define* (remove-buffer! buffer)
+  "Removes the buffer from the set of registered buffers."
+  (set! %buffers (filter (lambda (b) (not (eq? buffer b)))
+                         %buffers)))
+
+(define* (add-buffer! buffer)
+  "Register the given buffer if it is not already registered. If it is
+registered, then do nothing."
+  (unless (member buffer %buffers)
+    (set! %buffers (cons buffer %buffers))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tasks

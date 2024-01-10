@@ -27,8 +27,10 @@
          (alt?      (assoc-ref event 'alt?))
          (mod?      (or ctrl? alt?))
          (no-mod?   (not mod?)))
-    (when (and editable? no-mod?)
+    (when (and cursor editable? no-mod?)
       (cond
+       ((equal? key-code #\tab)
+        (buffer:buffer-insert-at-cursor! buffer "    "))
        ((char? key-code)
         (buffer:buffer-insert-at-cursor! buffer key-code))
        ((equal? key-code "<backspace>")
@@ -43,8 +45,13 @@
         (buffer:buffer-scroll-column! buffer 1))))
     (when (and ctrl? (not alt?))
       (cond
+       ((equal? key-code #\p) (modal:select-command!
+                               `(("open-file"     . ,modal:open-file!)
+                                 ("switch-buffer" . ,modal:switch-buffer!)
+                                 ("quit"          . ,state:quit!))))
+       ((equal? key-code #\o) (modal:open-file!))
        ((equal? key-code #\c) (state:quit!))
-       ((equal? key-code #\o) (modal:open-file!))))))
+       ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main.
@@ -57,6 +64,7 @@
 
   (state:add-window!
    (window:make-window #:buffer (buffer:make-buffer
+                                 #:name "**scratch**"
                                  #:cursor 0
                                  #:rope   (rope:make-rope #:text     ";; Welcome to Sage!\n\n"
                                                           #:language "scheme"))
@@ -68,7 +76,8 @@
    #:set-focus? #t)
   (state:add-window!
    (window:make-window
-    #:buffer (buffer:make-buffer #:rope (rope:make-rope #:text "Sage | Status OK"))
+    #:buffer (buffer:make-buffer #:name "**status-bar**"
+                                 #:rope (rope:make-rope #:text "Sage | Status OK"))
     #:area     '(rect:make-rect 0 0 0 0)))
   (add-hook! state:event-hook handle-events!)
   (add-hook! state:resize-hook resize-windows!))

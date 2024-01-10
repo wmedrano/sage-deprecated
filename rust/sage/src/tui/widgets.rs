@@ -61,9 +61,21 @@ impl<'a> Widget for SyntaxHighlightedText<'a> {
                         break;
                     }
                     let cell = buf.get_mut(x, y);
-                    cell.set_char(ch);
-                    x += 1;
-                    width -= 1;
+                    match ch {
+                        '\t' => {
+                            x += 4.min(width);
+                            width = width.saturating_sub(4);
+                        }
+                        ' ' | '\n' => {
+                            x += 1;
+                            width -= 1;
+                        }
+                        ch => {
+                            cell.set_char(ch);
+                            x += 1;
+                            width -= 1;
+                        }
+                    }
                 }
             }
             // 2. Render the line of text.

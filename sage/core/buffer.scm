@@ -8,6 +8,8 @@
             buffer-insert-at-cursor!
             buffer-cursor
             buffer-scroll-column!
+            buffer-name
+            buffer-set-name!
             buffer-set-cursor!
             buffer-delete-char-before-cursor!
             buffer-scroll-row!
@@ -17,18 +19,20 @@
              (srfi srfi-9))
 
 (define-record-type <buffer>
-  (%make-buffer rope cursor file-path)
+  (%make-buffer rope cursor file-path name)
   buffer?
   (rope      buffer-rope      buffer-set-rope!)
   (cursor    buffer-cursor    buffer-set-cursor!)
-  (file-path buffer-file-path buffer-set-file-path!))
+  (file-path buffer-file-path buffer-set-file-path!)
+  (name      buffer-name      buffer-set-name!))
 
 (define* (make-buffer #:key
+                      name
                       rope
                       (cursor    #f)
                       (file-path ""))
   "Make a new buffer."
-  (%make-buffer rope cursor file-path))
+  (%make-buffer rope cursor file-path name))
 
 (define* (buffer-insert-at-cursor! buffer string-or-char)
   "Insert a string or character at the cursor position."
