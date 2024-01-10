@@ -22,7 +22,7 @@
   (window:window-set-buffer! (state:focused-window)
                              (log:log-buffer)))
 
-(define* (handle-events! window buffer event)
+(define* (handle-editing-events! window buffer event)
   "Handle all events."
   (let* ((editable? (window:window-feature window 'editable?))
          (cursor    (buffer:buffer-cursor buffer))
@@ -47,7 +47,18 @@
        ((and (equal? key-code "<left>") (> cursor 0))
         (buffer:buffer-scroll-column! buffer -1))
        ((and (equal? key-code "<right>") (< cursor (rope:rope-length rope)))
-        (buffer:buffer-scroll-column! buffer 1))))
+        (buffer:buffer-scroll-column! buffer 1))))))
+
+(define* (handle-special-events! window buffer event)
+  "Handle all events."
+  (let* ((editable? (window:window-feature window 'editable?))
+         (cursor    (buffer:buffer-cursor buffer))
+         (rope      (buffer:buffer-rope buffer))
+         (key-code  (assoc-ref event 'key-code))
+         (ctrl?     (assoc-ref event 'ctrl?))
+         (alt?      (assoc-ref event 'alt?))
+         (mod?      (or ctrl? alt?))
+         (no-mod?   (not mod?)))
     (when (and ctrl? (not alt?))
       (cond
        ((equal? key-code #\p) (modal:select-command!
@@ -57,19 +68,31 @@
                                  ("clear-logs"    . ,log:clear-logs!)
                                  ("quit"          . ,state:quit!))))
        ((equal? key-code #\o) (modal:open-file!))
-       ((equal? key-code #\c) (state:quit!))
-       ))))
+       ((equal? key-code #\c) (state:quit!))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (initialize!)
-  (reset-hook! state:event-hook)
+  ;; Resize
   (reset-hook! state:resize-hook)
+  (add-hook! state:resize-hook resize-windows!)
+  (add-hook! state:resize-hook (lambda (width height)
+                                 (log:log! "Resized window to " width " " height ".")))
+
+  ;; Quit
   (reset-hook! state:quit-hook)
-  (for-each state:remove-window! (state:windows))
+
+  ;; Buffers
+  (add-hook! state:add-buffer-hook (lambda (buffer)
+                                     (unless (equal? "" (buffer:buffer-file-path buffer))
+                                       (add-hook! (buffer:buffer-event-hook buffer) handle-editing-events!))
+                                     (add-hook! (buffer:buffer-event-hook buffer) handle-special-events!)))
+  (for-each state:remove-buffer! (state:buffers))
+  (state:add-buffer! (log:log-buffer))
 
   ;; Create initial windows.
+  (for-each state:remove-window! (state:windows))
   (state:add-window!
    (window:make-window #:buffer (buffer:make-buffer
                                  #:name "**scratch**"
@@ -86,16 +109,7 @@
    (window:make-window
     #:buffer (buffer:make-buffer #:name "**status-bar**"
                                  #:rope (rope:make-rope #:text "Sage | Status OK"))
-    #:area     '(rect:make-rect 0 0 0 0)))
-
-  ;; Initialize logging
-  (state:add-buffer! (log:log-buffer))
-
-  ;; Set hooks
-  (add-hook! state:event-hook handle-events!)
-  (add-hook! state:resize-hook resize-windows!)
-  (add-hook! state:resize-hook (lambda (width height)
-                                 (log:log! "Resized window to " width " " height "."))))
+    #:area     '(rect:make-rect 0 0 0 0))))
 
 (define* (run!)
   (state:run! (tui:make-tui #:backend 'terminal)))

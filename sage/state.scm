@@ -1,13 +1,13 @@
 (define-module (sage state)
   #:export (
-            event-hook
             resize-hook
             quit-hook
+            add-window-hook
+            add-buffer-hook
 
             buffers
             remove-buffer!
             add-buffer!
-            add-task!
             add-window!
             focused-window
             frame-height
@@ -19,25 +19,12 @@
             tui
             windows
             ))
-(use-modules ((sage core window)   #:prefix window:)
+(use-modules ((sage core buffer)   #:prefix buffer:)
+             ((sage core internal) #:prefix internal:)
              ((sage core log)      #:prefix log:)
              ((sage core tui)      #:prefix tui:)
-             ((sage core internal) #:prefix internal:)
+             ((sage core window)   #:prefix window:)
              (srfi srfi-2))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Hooks
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Called on the focused window for each event. The procedure must be
-;; of the form: (proc window buffer event)
-(define event-hook (make-hook 3))
-
-;; Called when the terminal window is resized. The parameters are the
-;; new width and height.
-(define resize-hook (make-hook 2))
-
-(define %tasks (make-hook))
 
 ;; Called when the sage will quit.
 (define quit-hook (make-hook))
@@ -47,6 +34,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define %tui #f)
 (define %tui-frame-size '((width . 80) (height . 24)))
+
+;; Called when the terminal window is resized. The parameters are the
+;; new width and height.
+(define resize-hook (make-hook 2))
 
 (define* (frame-width)
   "Get the width of the frame."
@@ -69,6 +60,9 @@
 (define* %windows '())
 (define* %focused-window #f)
 
+(define add-window-hook (make-hook 1))
+(define add-buffer-hook (make-hook 1))
+
 (define* (windows)
   "Get a list of the current windows."
   %windows)
@@ -80,7 +74,9 @@
 
 set-focus? - If true, then the window will automatically be focused.
 "
-  (set! %windows (cons window %windows))
+  (unless (member window %windows)
+    (set! %windows (cons window %windows))
+    (run-hook add-window-hook window))
   (when set-focus?
     (set-focused-window! window))
   (add-buffer! (window:window-buffer window))
@@ -123,17 +119,8 @@ no window will have focus."
   "Register the given buffer if it is not already registered. If it is
 registered, then do nothing."
   (unless (member buffer %buffers)
-    (set! %buffers (cons buffer %buffers))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Tasks
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define* (add-task! task)
-  (add-hook! %tasks task))
-
-(define* (%run-tasks!)
-  (run-hook %tasks)
-  (reset-hook! %tasks))
+    (set! %buffers (cons buffer %buffers))
+    (run-hook add-buffer-hook buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The main program.
@@ -152,15 +139,12 @@ registered, then do nothing."
       (for-each (lambda (e)
                   (and-let* ((window %focused-window)
                              (buffer (window:window-buffer window)))
-                    (run-hook event-hook window buffer e))
-                  (%run-tasks!))
+                    (run-hook (buffer:buffer-event-hook buffer)
+                              window buffer e)))
                 events)
       (if (pair? events) (handle-all-events (internal:events-from-terminal)))))
   (define (run-loop-iteration!)
-    (with-exception-handler
-        (lambda (ex) (log:log! "Encountered exception " ex))
-      (handle-all-events)
-      #:unwind? #t)
+    (handle-all-events)
     (let ((frame-size (and %tui
                            (tui:tui-draw! %tui (windows)))))
       (when (and %tui (not (equal? frame-size %tui-frame-size)))

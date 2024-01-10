@@ -79,9 +79,7 @@
                                    (- (string-length query) 1))))
            ((equal? key-code "<esc>")
             (cleanup!)))))))
-  (add-hook! state:event-hook handle-event!)
-  (add-hook! cleanup-hook (lambda ()
-                            (remove-hook! state:event-hook handle-event!)))
+  (add-hook! (buffer:buffer-event-hook buffer) handle-event!)
   (define (handle-resize! width height)
     (window:window-set-area! window (modal-area width height)))
   (add-hook! state:resize-hook handle-resize!)
@@ -122,11 +120,9 @@
       (window:window-set-buffer!
        window
        buffer)))
-  (define (deferred-on-select! file-path)
-    (state:add-task! (lambda () (on-select! file-path))))
   (run-modal! #:prompt "Open File: "
               #:items (%discover-files ".")
-              #:on-select deferred-on-select!))
+              #:on-select on-select!))
 
 (define* (%discover-files root-dir)
   (let* ((file-name root-dir)
@@ -148,8 +144,6 @@
   (define (on-select! buffer)
     (let* ((window   (state:focused-window)))
       (window:window-set-buffer! window buffer)))
-  (define (deferred-on-select! buffer)
-    (state:add-task! (lambda () (on-select! buffer))))
   (define (buffer->string buffer)
     (let ((name (buffer:buffer-name buffer)))
       (if (equal? name "")
@@ -157,7 +151,7 @@
           name)))
   (run-modal! #:prompt "Switch Buffer: "
               #:items (state:buffers)
-              #:on-select deferred-on-select!
+              #:on-select on-select!
               #:item->string buffer->string))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
