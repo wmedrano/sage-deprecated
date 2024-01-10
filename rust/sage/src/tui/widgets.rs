@@ -36,6 +36,7 @@ impl<'a> Widget for SyntaxHighlightedText<'a> {
         let rope_lines = self.text.len_lines();
         let mut line_text_iter = self.text.lines();
         for (line_idx, y) in (0..rope_lines).zip(area.y..area.bottom()) {
+            let mut char_index = self.text.line_to_char(line_idx);
             let mut byte_index = self.text.line_to_byte(line_idx);
             let mut x = area.x;
             let mut width = area.width;
@@ -72,6 +73,7 @@ impl<'a> Widget for SyntaxHighlightedText<'a> {
                         break;
                     }
                     let cell = buf.get_mut(x, y);
+                    let next_char_index = char_index + 1;
                     let next_byte_index = byte_index + ch.len_utf8();
                     if ch != '\n' {
                         cell.set_char(ch);
@@ -80,10 +82,11 @@ impl<'a> Widget for SyntaxHighlightedText<'a> {
                         cell.set_style(s);
                     }
                     if let CursorPosition::Byte(p) = self.cursor {
-                        if (byte_index..next_byte_index).contains(&p) {
+                        if (char_index..next_char_index).contains(&p) {
                             cell.set_bg(Color::White);
                         }
                     }
+                    char_index = next_char_index;
                     byte_index = next_byte_index;
                     x += 1;
                     width -= 1;

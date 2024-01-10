@@ -340,4 +340,14 @@ mod tests {
         let r = Rope::new();
         assert_eq!(r.to_string(), "");
     }
+
+    #[test]
+    fn rope_char_length() {
+        let mut r = Rope::new();
+        r.replace(0..0, "123\n🤖robots🤖\n456\n8").unwrap();
+        assert_eq!(r.len_chars(), 18);
+        assert_eq!(r.len_lines(), 4);
+        assert_eq!(r.line(1), "🤖robots🤖\n");
+        assert_eq!(r.line(1).len_chars(), 9);
+    }
 }
