@@ -34,7 +34,9 @@
   (define (set-query! q)
     (set! query q)
     (set! matches (%filter-items-by-query items query))
-    (rope:rope-set-string! rope (%make-modal-string prompt query matches)))
+    (rope:rope-set-string! rope (%make-modal-string prompt query matches))
+    (buffer:buffer-set-cursor! buffer
+                               (+ (string-length prompt) (string-length query))))
   (set-query! "")
   (define (select!)
     (cleanup!)
