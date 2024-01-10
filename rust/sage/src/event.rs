@@ -37,12 +37,18 @@ unsafe fn to_scm_event(e: event::Event) -> Option<Scm> {
                 event::KeyCode::Down => Scm::new_string("<down>"),
                 event::KeyCode::Backspace => Scm::new_string("<backspace>"),
                 event::KeyCode::Esc => Scm::new_string("<esc>"),
+                // The code below doesn't work. Perhaps more work is needed to set up the terminal.
+                // event::KeyCode::Modifier(
+                //     event::ModifierKeyCode::LeftControl | event::ModifierKeyCode::RightControl,
+                // ) => Scm::new_string("<ctrl>"),
+                // event::KeyCode::Modifier(
+                //     event::ModifierKeyCode::LeftAlt | event::ModifierKeyCode::RightAlt,
+                // ) => Scm::new_string("<alt>"),
                 _ => return None,
             };
             let ctrl = Scm::new_bool(modifiers.contains(event::KeyModifiers::CONTROL));
             let alt = Scm::new_bool(modifiers.contains(event::KeyModifiers::ALT));
             let kind = match kind {
-                // TODO: Consider caching symbols to improve performance.
                 event::KeyEventKind::Press => Scm::new_symbol("press"),
                 event::KeyEventKind::Repeat => Scm::new_symbol("repeat"),
                 event::KeyEventKind::Release => Scm::new_symbol("release"),

@@ -143,16 +143,18 @@ registered, then do nothing."
                               window buffer e)))
                 events)
       (if (pair? events) (handle-all-events (internal:events-from-terminal)))))
-  (define (run-loop-iteration!)
-    (handle-all-events)
+  (define (draw)
     (let ((frame-size (and %tui
                            (tui:tui-draw! %tui (windows)))))
       (when (and %tui (not (equal? frame-size %tui-frame-size)))
         (run-hook resize-hook
                   (assoc-ref frame-size 'width)
                   (assoc-ref frame-size 'height))
-        (set! %tui-frame-size frame-size))))
-  (define (run-event-loop)
+        (set! %tui-frame-size frame-size)))  )
+  (define (run-loop-iteration!)
+    (handle-all-events)
+    (draw))
+  (define (run-main-loop)
     (init-frame-size!)
     (while %tui
       (run-loop-iteration!))
@@ -160,4 +162,4 @@ registered, then do nothing."
   (define (cleanup-and-reraise-exception e)
     (quit!)
     (raise-exception e))
-  (with-exception-handler cleanup-and-reraise-exception run-event-loop))
+  (with-exception-handler cleanup-and-reraise-exception run-main-loop))

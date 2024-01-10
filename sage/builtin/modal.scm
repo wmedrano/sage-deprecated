@@ -2,9 +2,10 @@
   #:export (run-modal! open-file! switch-buffer! select-command!))
 (use-modules
  ((sage core buffer) #:prefix buffer:)
+ ((sage core log)    #:prefix log:)
+ ((sage core rect)   #:prefix rect:)
  ((sage core rope)   #:prefix rope:)
  ((sage core window) #:prefix window:)
- ((sage core rect)   #:prefix rect:)
  ((sage state)       #:prefix state:)
  ((ice-9 ftw)        #:prefix ftw:)
  ((ice-9 textual-ports) #:select (get-string-all))
@@ -104,6 +105,7 @@
 ;; Open file.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (open-file!)
+  "Interactively open a file."
   (define (on-select! file-path)
     (let* ((window   (state:focused-window))
            (language (language-for-path file-path))
@@ -117,9 +119,7 @@
       (state:add-buffer! buffer)
       ;; TODO: Move this to a hook.
       (window:window-set-feature! window 'title file-path)
-      (window:window-set-buffer!
-       window
-       buffer)))
+      (window:window-set-buffer! window buffer)))
   (run-modal! #:prompt "Open File: "
               #:items (%discover-files ".")
               #:on-select on-select!))
