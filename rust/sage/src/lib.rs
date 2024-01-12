@@ -6,6 +6,7 @@ mod event;
 pub mod rope;
 mod scm_const;
 pub mod theme;
+pub mod treesitter;
 mod tui;
 
 pub struct SageModule;
@@ -19,6 +20,7 @@ impl Module for SageModule {
         rope::define_rope(ctx);
         tui::define_tui(ctx);
         event::define_event(ctx);
+        treesitter::define_treesitter(ctx);
     }
 }
 

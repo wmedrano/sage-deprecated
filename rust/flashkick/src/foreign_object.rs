@@ -112,7 +112,7 @@ impl TypeIdToScmType {
         let mapping = inner.get_or_insert_with(HashMap::new);
         mapping.get(&type_id).cloned().ok_or_else(|| {
             anyhow!(
-                "{type_name}::init() not called before attempting to use Scheme type. Type id was {type_id:?} and valid types are {mapping:?}",
+                "{type_name} is not registered with Scheme. {type_name}::init() not called before attempting to use Scheme type. Type id was {type_id:?} and valid types are {mapping:?}",
                 type_name = std::any::type_name::<T>()
             )
         })
