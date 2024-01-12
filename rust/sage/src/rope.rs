@@ -41,31 +41,48 @@ impl Rope {
         }
     }
 
-    /// Replace the contents within `byte_range` with `text`. The new end point is returned.
-    pub fn replace<T>(&mut self, char_range: Range<usize>, text: T) -> Result<usize>
+    pub fn insert<T>(&mut self, start: usize, text: T) -> Result<usize>
     where
         T: AsRef<str>,
     {
         let text = text.as_ref();
-        let byte_range_start = self.inner.try_char_to_byte(char_range.start)?;
-        let byte_range_end = self.inner.try_char_to_byte(char_range.end)?;
-        let byte_range = byte_range_start..byte_range_end;
-        self.inner.try_remove(char_range.clone())?;
-        // TODO: If try_remove succeeds in editing and try_insert fails, then the tree sitter tree
-        // may be invalid as tree.edit will not be called.
-        self.inner.try_insert(char_range.start, text)?;
+        let start_byte = self.inner.try_char_to_byte(start)?;
+
+        self.inner.try_insert(start, text)?;
+        let end = start + text.chars().count();
+        let end_byte = start_byte + text.len();
+
         if let Some(tree) = self.tree.as_mut() {
             tree.edit(&tree_sitter::InputEdit {
-                start_byte: byte_range.start,
-                old_end_byte: byte_range.end,
-                new_end_byte: byte_range.start + text.len(),
+                start_byte,
+                old_end_byte: start_byte,
+                new_end_byte: end_byte,
                 start_position: Point::default(),
                 old_end_position: Point::default(),
                 new_end_position: Point::default(),
             });
             self.reparse();
         }
-        Ok(char_range.start + text.chars().count())
+        Ok(end)
+    }
+    /// Replace the contents within `byte_range` with `text`. The new end point is returned.
+    pub fn delete(&mut self, char_range: Range<usize>) -> Result<()> {
+        let byte_range_start = self.inner.try_char_to_byte(char_range.start)?;
+        let byte_range_end = self.inner.try_char_to_byte(char_range.end)?;
+        let byte_range = byte_range_start..byte_range_end;
+        self.inner.try_remove(char_range.clone())?;
+        if let Some(tree) = self.tree.as_mut() {
+            tree.edit(&tree_sitter::InputEdit {
+                start_byte: byte_range.start,
+                old_end_byte: byte_range.end,
+                new_end_byte: byte_range.start,
+                start_position: Point::default(),
+                old_end_position: Point::default(),
+                new_end_position: Point::default(),
+            });
+            self.reparse();
+        }
+        Ok(())
     }
 
     /// Get the tree for the rope.
@@ -179,10 +196,15 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
         scm_rope_line_length,
         2,
     );
-    ctx.define_subr_4(
-        CStr::from_bytes_with_nul(b"rope-replace!\0").unwrap(),
-        scm_rope_replace,
-        4,
+    ctx.define_subr_3(
+        CStr::from_bytes_with_nul(b"rope-insert!\0").unwrap(),
+        scm_rope_insert,
+        3,
+    );
+    ctx.define_subr_3(
+        CStr::from_bytes_with_nul(b"rope-delete!\0").unwrap(),
+        scm_rope_delete,
+        3,
     );
     ctx.define_subr_2(
         CStr::from_bytes_with_nul(b"rope-set-language!\0").unwrap(),
@@ -254,21 +276,32 @@ extern "C" fn scm_rope_line_length(rope: Scm, line: Scm) -> Scm {
     .scm_unwrap()
 }
 
-extern "C" fn scm_rope_replace(rope: Scm, start_byte: Scm, end_byte: Scm, text: Scm) -> Scm {
+extern "C" fn scm_rope_insert(rope: Scm, start_byte: Scm, text: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm_mut(rope).unwrap();
+        let start = start_byte.to_u32() as usize;
+        let end = if text.is_char() {
+            let mut text_buffer = [0; 4];
+            let char_str = text.to_char().unwrap().encode_utf8(&mut text_buffer);
+            rope.insert(start, char_str).scm_unwrap()
+        } else {
+            rope.insert(start, text.to_string()).scm_unwrap()
+        };
+        Scm::new_u32(end as u32)
+    })
+    .map_err(|_| "Rust panic encountered on rope-insert!.")
+    .scm_unwrap()
+}
+
+extern "C" fn scm_rope_delete(rope: Scm, start_byte: Scm, end_byte: Scm) -> Scm {
     catch_unwind(|| unsafe {
         let rope = Rope::from_scm_mut(rope).unwrap();
         let start = start_byte.to_u32() as usize;
         let end = end_byte.to_u32() as usize;
-        let new_end = if text.is_char() {
-            let mut text_buffer = [0; 4];
-            let char_str = text.to_char().unwrap().encode_utf8(&mut text_buffer);
-            rope.replace(start..end, char_str).scm_unwrap()
-        } else {
-            rope.replace(start..end, text.to_string()).scm_unwrap()
-        };
-        Scm::new_u32(new_end as u32)
+        rope.delete(start..end).scm_unwrap();
+        Scm::UNDEFINED
     })
-    .map_err(|_| "Rust panic encountered on rope-replace!.")
+    .map_err(|_| "Rust panic encountered on rope-delete!.")
     .scm_unwrap()
 }
 
@@ -289,7 +322,7 @@ extern "C" fn scm_rope_set_language(rope: Scm, language: Scm) -> Scm {
         };
         rope.set_language(language, highlights);
     })
-    .map_err(|_| "Rust panic encountered on rope-replace!.")
+    .map_err(|_| "Rust panic encountered on rope-set-language!.")
     .scm_unwrap();
     Scm::UNDEFINED
 }
@@ -344,7 +377,7 @@ mod tests {
     #[test]
     fn rope_char_length() {
         let mut r = Rope::new();
-        r.replace(0..0, "123\n🤖robots🤖\n456\n8").unwrap();
+        r.insert(0, "123\n🤖robots🤖\n456\n8").unwrap();
         assert_eq!(r.len_chars(), 18);
         assert_eq!(r.len_lines(), 4);
         assert_eq!(r.line(1), "🤖robots🤖\n");

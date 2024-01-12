@@ -10,6 +10,24 @@
   (rope->string
    (make-rope #:text "my first string")))
 
+(test-equal "rope-insert! can insert in middle of string"
+  '(4 . "ropes" )
+  (let* ((rope (make-rope #:text "rs"))
+         (end  (rope-insert! rope 1 "ope")))
+    (cons end (rope->string rope))))
+
+(test-equal "rope-insert! can insert at start of string"
+  '(3 . "stars" )
+  (let* ((rope (make-rope #:text "rs"))
+         (end  (rope-insert! rope 0 "sta")))
+    (cons end (rope->string rope))))
+
+(test-equal "rope-insert! can insert at end of string"
+  '(5 . "rs7rs" )
+  (let* ((rope (make-rope #:text "rs"))
+         (end  (rope-insert! rope 2 "7rs")))
+    (cons end (rope->string rope))))
+
 (test-equal "rope-replace! replaces contents between points and returns new endpoint"
   '( "hello world!" . 5)
   (let* ((rope      (make-rope #:text "hellase world!"))

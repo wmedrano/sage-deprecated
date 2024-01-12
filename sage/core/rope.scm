@@ -41,16 +41,17 @@ language or rust."
 (define* (rope-replace! rope start end string-or-char)
   "Replace the contents between start (inclusive) and end (exclusive)
 with string-or-char. The new end cursor is returned."
-  (ffi:rope-replace! rope start end string-or-char))
+  (rope-delete! rope start end)
+  (rope-insert! rope start string-or-char))
 
 (define* (rope-insert! rope position string-or-char)
   "Insert string-or-char into the rope at position. Returns the new
 end cursor."
-  (rope-replace! rope position position string-or-char))
+  (ffi:rope-insert! rope position string-or-char))
 
 (define* (rope-delete! rope start end)
   "Delete the contents between start and end."
-  (rope-replace! rope start end ""))
+  (ffi:rope-delete! rope start end))
 
 (define* (rope-set-string! rope string)
   "Sets the string for the rope."
