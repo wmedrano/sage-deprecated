@@ -1,3 +1,4 @@
+;; At the moment, this module is unused. Treesitter is hidden behind rope on the Rust side.
 (define-module (sage core tree-sitter)
   #:export (
             make-parser

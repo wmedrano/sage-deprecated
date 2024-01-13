@@ -12,6 +12,6 @@
    #:rope   (rope:make-rope
              #:text     "Welcome to Sage!\n\n
 
+alt+x - Select and execute a command.
 ctrl+o - Open a file.
-ctrl+p - Select and execute a command.
 ctrl+c - Exit.")))

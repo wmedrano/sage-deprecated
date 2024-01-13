@@ -196,8 +196,8 @@ unsafe fn scm_window_from_alist<'a>(window: Scm) -> Window<'a> {
         let mut title = None;
         for (feature, value) in scm_features.iter_pairs() {
             match feature.to_symbol().as_str() {
-                "border?" => border = value.to_bool(),
-                "line-numbers?" => line_numbers = value.to_bool(),
+                "border?" => border = value.is_true(),
+                "line-numbers?" => line_numbers = value.is_true(),
                 "title" => title = Some(value.to_string()),
                 _ => (),
             }

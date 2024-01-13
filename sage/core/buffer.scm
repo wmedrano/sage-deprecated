@@ -68,24 +68,29 @@ row."
                            (else 0))))
     (buffer-set-cursor! buffer cursor)))
 
+(define* (%clamp value min-value max-value)
+  (cond
+   ((< value min-value) min-value)
+   ((> value max-value) max-value)
+   (else value)))
+
 (define* (buffer-scroll-row! buffer row-count)
-  "Move the cursor up and down the lines."
-  (and-let* ((current-cursor   (buffer-cursor buffer))
-             (rope             (buffer-rope buffer))
-             (current-position (rope:rope-cursor->position rope current-cursor))
-             (raw-row-idx      (+ (car current-position) row-count))
-             (line-count       (rope:rope-line-count rope))
-             (row-idx          (cond
-                                ((< raw-row-idx 0) 0)
-                                ((< raw-row-idx line-count) raw-row-idx)
-                                ((equal? line-count 0) 0)
-                                (else (- line-count 1))))
-             (line-length      (rope:rope-line-length rope row-idx))
-             (raw-col-idx      (cdr current-position))
-             (col-idx          (cond
-                                ((< raw-col-idx line-length) raw-col-idx)
-                                ((equal? line-length 0) 0)
-                                (else (- line-length 1))))
-             (new-position     (cons row-idx col-idx))
-             (cursor           (rope:rope-position->cursor rope new-position)))
+  "Move the cursor up and down the lines.
+
+TODO: Preserve the column when switching to a line that is shorter
+than the current column."
+  (and-let* ((rope             (buffer-rope buffer))
+             (current-cursor   (buffer-cursor buffer))
+             (current-row      (rope:rope-cursor->line rope current-cursor))
+             (current-col      (- current-cursor
+                                  (rope:rope-line->cursor rope current-row)))
+             (row              (%clamp (+ current-row row-count)
+                                       0
+                                       (max 0 (- (rope:rope-line-count rope) 1))))
+             (row-length       (rope:rope-line-length rope row))
+             (col              (%clamp current-col
+                                       0
+                                       (max 0 (- row-length 1))))
+             (cursor           (+ (rope:rope-line->cursor rope row)
+                                  col)))
     (buffer-set-cursor! buffer cursor)))

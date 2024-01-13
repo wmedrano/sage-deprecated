@@ -14,6 +14,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Base modal framework.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define* (%filter-items-by-query items query item->string)
+  "Returns a list of all items that match query."
+  (define (item-matches-all-subqueries? item-string subqueries)
+    (every (lambda (subquery) (string-contains item-string subquery))
+           subqueries))
+  (let* ((subqueries (string-split query #\space)))
+    (filter (lambda (item) (item-matches-all-subqueries? (item->string item) subqueries))
+            items)))
+
 (define* (modal-area frame-width frame-height)
   (rect:make-rect (* frame-width  1/8)
                   (* frame-height 1/8)
@@ -21,13 +30,6 @@
                   (* frame-height 6/8)))
 
 (define* (run-modal! #:key prompt items on-select (item->string identity))
-  (define* (%filter-items-by-query items query)
-    (define (item-matches-all-subqueries? item-string subqueries)
-      (every (lambda (subquery) (string-contains item-string subquery))
-             subqueries))
-    (let* ((subqueries (string-split query #\space)))
-      (filter (lambda (item) (item-matches-all-subqueries? (item->string item) subqueries))
-              items)))
   (define* (%make-modal-string prompt query matches)
     (define (format-item item)
       (string-concatenate (list " " (item->string item))))
@@ -51,7 +53,7 @@
     (reset-hook! cleanup-hook))
   (define (set-query! q)
     (set! query q)
-    (set! matches (%filter-items-by-query items query))
+    (set! matches (%filter-items-by-query items query item->string))
     (rope:rope-set-string! rope (%make-modal-string prompt query matches))
     (buffer:buffer-set-cursor! buffer
                                (+ (string-length prompt) (string-length query))))
@@ -61,25 +63,24 @@
     (when (pair? matches)
       (on-select (car matches))))
   (define (handle-event! w b event)
-    (when (and (eq? window w) (eq? buffer b))
-      (let* ((key-code  (assoc-ref event 'key-code))
-             (ctrl?     (assoc-ref event 'ctrl?))
-             (alt?      (assoc-ref event 'alt?))
-             (mod?      (or ctrl? alt?))
-             (no-mod?   (not mod?)))
-        (when no-mod?
-          (cond
-           ((equal? key-code #\newline)
-            (when (pair? matches) (select!)))
-           ((char? key-code)
-            (set-query! (string-append query
-                                       (list->string (list key-code)))))
-           ((and (equal? key-code "<backspace>") (> (string-length query) 0))
-            (set-query! (substring query
-                                   0
-                                   (- (string-length query) 1))))
-           ((equal? key-code "<esc>")
-            (cleanup!)))))))
+    (let* ((key-code  (assoc-ref event 'key-code))
+           (ctrl?     (assoc-ref event 'ctrl?))
+           (alt?      (assoc-ref event 'alt?))
+           (mod?      (or ctrl? alt?))
+           (no-mod?   (not mod?)))
+      (when no-mod?
+        (cond
+         ((equal? key-code #\newline)
+          (when (pair? matches) (select!)))
+         ((char? key-code)
+          (set-query! (string-append query
+                                     (list->string (list key-code)))))
+         ((and (equal? key-code "<backspace>") (> (string-length query) 0))
+          (set-query! (substring query
+                                 0
+                                 (- (string-length query) 1))))
+         ((equal? key-code "<esc>")
+          (cleanup!))))))
   (add-hook! (buffer:buffer-event-hook buffer) handle-event!)
   (define (handle-resize! width height)
     (window:window-set-area! window (modal-area width height)))
@@ -110,6 +111,9 @@
     (let* ((window   (state:focused-window))
            (language (language-for-path file-path))
            (text     (call-with-input-file file-path get-string-all))
+           ;; TODO: If there is already an open buffer with this
+           ;; file-path, reuse it instead of creating a new
+           ;; (duplicate) buffer.
            (buffer   (buffer:make-buffer
                       #:name      file-path
                       #:file-path file-path
@@ -141,6 +145,7 @@
 ;; Switch Buffer.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define* (switch-buffer!)
+  "Switch the current window to a different buffer."
   (define (on-select! buffer)
     (let* ((window   (state:focused-window)))
       (window:window-set-buffer! window buffer)))

@@ -79,7 +79,7 @@ extern "C" fn scm_parser_parse(parser: Scm, rope: Scm, previous_tree: Scm) -> Sc
     catch_unwind(|| unsafe {
         let parser = Parser::from_scm_mut(parser).unwrap();
         let rope = Rope::from_scm(rope).unwrap();
-        let previous_tree = if previous_tree.is_undefined() || !previous_tree.to_bool() {
+        let previous_tree = if previous_tree.is_undefined() || !previous_tree.is_true() {
             None
         } else {
             Tree::from_scm(previous_tree)

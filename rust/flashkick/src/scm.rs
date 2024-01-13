@@ -33,7 +33,7 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn is_string(&self) -> bool {
-        Scm::from(ffi::scm_string_p(self.0)).to_bool()
+        Scm::from(ffi::scm_string_p(self.0)).is_true()
     }
 
     /// Equivalent to (equal? self other).
@@ -41,7 +41,7 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn is_equal(&self, other: Scm) -> bool {
-        Scm::from(ffi::scm_equal_p(self.0, other.0)).to_bool()
+        Scm::from(ffi::scm_equal_p(self.0, other.0)).is_true()
     }
 
     /// Equivalent to (eq? self other).
@@ -49,7 +49,7 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn is_eq(&self, other: Scm) -> bool {
-        Scm::from(ffi::scm_eq_p(self.0, other.0)).to_bool()
+        Scm::from(ffi::scm_eq_p(self.0, other.0)).is_true()
     }
 
     /// Equivalent to (eqv? self other).
@@ -57,7 +57,7 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn is_eqv(&self, other: Scm) -> bool {
-        Scm::from(ffi::scm_eqv_p(self.0, other.0)).to_bool()
+        Scm::from(ffi::scm_eqv_p(self.0, other.0)).is_true()
     }
 
     /// Equivalent to (number? self).
@@ -65,7 +65,7 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn is_number(&self) -> bool {
-        Scm::from(ffi::scm_number_p(self.0)).to_bool()
+        Scm::from(ffi::scm_number_p(self.0)).is_true()
     }
 
     /// Equivalent to (char? self).
@@ -73,7 +73,7 @@ impl Scm {
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn is_char(&self) -> bool {
-        Scm::from(ffi::scm_char_p(self.0)).to_bool()
+        Scm::from(ffi::scm_char_p(self.0)).is_true()
     }
 
     /// # Safety
@@ -142,7 +142,8 @@ impl Scm {
 
     /// # Safety
     /// Makes calls to C.
-    pub unsafe fn new_string(s: &str) -> Scm {
+    pub unsafe fn new_string<S: AsRef<str>>(s: S) -> Scm {
+        let s = s.as_ref();
         ffi::scm_from_utf8_stringn(s.as_ptr() as _, s.len() as _).into()
     }
 
@@ -208,11 +209,22 @@ impl Scm {
         Self::with_list(iter.into_iter().map(|(x, y)| Self::cons(x, y)))
     }
 
+    /// Returns true if `self` is truthy. In Guile, all values are truthy except for `#f` and Emacs
+    /// Lisp's variant of `nil`.
+    ///
+    /// # Safety
+    /// Makes calls to C.
+    pub unsafe fn is_true(&self) -> bool {
+        let is_false = crate::scm_matches_bits_in_common!(self.0, Scm::ELISP_NIL.0, Scm::FALSE.0);
+        !is_false
+    }
+
+    /// Returns the value of the bool. If `self` is not a bool, then an error is raised.
+    ///
     /// # Safety
     /// Makes calls to C.
     pub unsafe fn to_bool(&self) -> bool {
-        let is_false = crate::scm_matches_bits_in_common!(self.0, Scm::ELISP_NIL.0, Scm::FALSE.0);
-        !is_false
+        ffi::scm_to_bool(self.0) != 0
     }
 
     /// # Safety
@@ -405,8 +417,8 @@ mod tests {
         unsafe {
             boot_guile(std::iter::empty(), || {
                 // Bool
-                assert!(Scm::new_bool(true).to_bool());
-                assert!(!Scm::new_bool(false).to_bool());
+                assert!(Scm::new_bool(true).is_true());
+                assert!(!Scm::new_bool(false).is_true());
 
                 // Numbers
                 assert_eq!(Scm::new_u8(1).to_u8(), 1);
@@ -457,9 +469,9 @@ mod tests {
     fn scheme_falsey_values() {
         unsafe {
             boot_guile(std::iter::empty(), || {
-                assert!(!Scm::new_bool(false).to_bool());
-                assert!(!Scm::FALSE.to_bool());
-                assert!(!Scm::ELISP_NIL.to_bool());
+                assert!(!Scm::new_bool(false).is_true());
+                assert!(!Scm::FALSE.is_true());
+                assert!(!Scm::ELISP_NIL.is_true());
             });
         }
     }
@@ -468,21 +480,21 @@ mod tests {
     fn scheme_truthy_values() {
         unsafe {
             boot_guile(std::iter::empty(), || {
-                assert!(Scm::TRUE.to_bool());
-                assert!(Scm::EOL.to_bool());
-                assert!(Scm::UNDEFINED.to_bool());
-                assert!(Scm::new_u8(1).to_bool());
-                assert!(Scm::new_i8(-2).to_bool());
-                assert!(Scm::new_u16(3).to_bool());
-                assert!(Scm::new_i16(-4).to_bool());
-                assert!(Scm::new_u32(5).to_bool());
-                assert!(Scm::new_i32(-6).to_bool());
-                assert!(Scm::new_u64(7).to_bool());
-                assert!(Scm::new_i64(-8).to_bool());
-                assert!(Scm::new_f64(9.5).to_bool());
-                assert!(Scm::new_f64(-10.5).to_bool());
-                assert!(Scm::new_string("").to_bool());
-                assert!(Scm::new_char(char::MAX).to_bool());
+                assert!(Scm::TRUE.is_true());
+                assert!(Scm::EOL.is_true());
+                assert!(Scm::UNDEFINED.is_true());
+                assert!(Scm::new_u8(1).is_true());
+                assert!(Scm::new_i8(-2).is_true());
+                assert!(Scm::new_u16(3).is_true());
+                assert!(Scm::new_i16(-4).is_true());
+                assert!(Scm::new_u32(5).is_true());
+                assert!(Scm::new_i32(-6).is_true());
+                assert!(Scm::new_u64(7).is_true());
+                assert!(Scm::new_i64(-8).is_true());
+                assert!(Scm::new_f64(9.5).is_true());
+                assert!(Scm::new_f64(-10.5).is_true());
+                assert!(Scm::new_string("").is_true());
+                assert!(Scm::new_char(char::MAX).is_true());
             });
         }
     }

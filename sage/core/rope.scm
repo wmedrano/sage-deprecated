@@ -8,11 +8,11 @@
             rope-pop!
             rope-replace!
             rope-set-language!
-            rope-position->cursor
-            rope-cursor->position
             rope-set-string!
             rope-line-count
             rope-line-length
+            rope-line->cursor
+            rope-cursor->line
             ))
 (use-modules ((sage core internal) #:prefix ffi:)
              (srfi srfi-2))
@@ -44,10 +44,10 @@ with string-or-char. The new end cursor is returned."
   (rope-delete! rope start end)
   (rope-insert! rope start string-or-char))
 
-(define* (rope-insert! rope position string-or-char)
-  "Insert string-or-char into the rope at position. Returns the new
+(define* (rope-insert! rope cursor string-or-char)
+  "Insert string-or-char into the rope at cursor. Returns the new
 end cursor."
-  (ffi:rope-insert! rope position string-or-char))
+  (ffi:rope-insert! rope cursor string-or-char))
 
 (define* (rope-delete! rope start end)
   "Delete the contents between start and end."
@@ -61,20 +61,6 @@ end cursor."
   "Get the length of the rope in number of characters."
   (ffi:rope-length rope))
 
-(define* (rope-position->cursor rope position)
-  "Convert a position to a cursor. A cursor is a character index
-within the rope.
-
-A position should be a pair in the format: (row-index . col-index)."
-  (ffi:rope-position->cursor rope position))
-
-(define* (rope-cursor->position rope cursor)
-  "Convert a cursor to a position. A position is a (row-index
-. col-index) pair.
-
-A cursor is the character index within the rope."
-  (ffi:rope-cursor->position rope cursor))
-
 (define* (rope-line-count rope)
   "Returns the number of lines within the rope."
   (ffi:rope-line-count rope))
@@ -82,3 +68,11 @@ A cursor is the character index within the rope."
 (define* (rope-line-length rope line)
   "Returns the length of the given line."
   (ffi:rope-line-length rope line))
+
+(define* (rope-line->cursor rope line)
+  "Get the cursor (character index) for the given line."
+  (ffi:rope-line->cursor rope line))
+
+(define* (rope-cursor->line rope cursor)
+  "Get the line for the cursor (character index)."
+  (ffi:rope-cursor->line rope cursor))

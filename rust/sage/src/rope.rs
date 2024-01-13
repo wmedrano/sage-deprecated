@@ -196,6 +196,16 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
         scm_rope_line_length,
         2,
     );
+    ctx.define_subr_2(
+        CStr::from_bytes_with_nul(b"rope-line->cursor\0").unwrap(),
+        scm_rope_line_to_cursor,
+        2,
+    );
+    ctx.define_subr_2(
+        CStr::from_bytes_with_nul(b"rope-cursor->line\0").unwrap(),
+        scm_rope_cursor_to_line,
+        2,
+    );
     ctx.define_subr_3(
         CStr::from_bytes_with_nul(b"rope-insert!\0").unwrap(),
         scm_rope_insert,
@@ -209,16 +219,6 @@ pub unsafe fn define_rope(ctx: &mut ModuleInitContext) {
     ctx.define_subr_2(
         CStr::from_bytes_with_nul(b"rope-set-language!\0").unwrap(),
         scm_rope_set_language,
-        2,
-    );
-    ctx.define_subr_2(
-        CStr::from_bytes_with_nul(b"rope-cursor->position\0").unwrap(),
-        scm_rope_cursor_to_position,
-        2,
-    );
-    ctx.define_subr_2(
-        CStr::from_bytes_with_nul(b"rope-position->cursor\0").unwrap(),
-        scm_rope_position_to_cursor,
         2,
     );
 }
@@ -235,7 +235,7 @@ extern "C" fn scm_make_rope() -> Scm {
 extern "C" fn scm_rope_to_string(rope: Scm) -> Scm {
     catch_unwind(|| unsafe {
         let rope = Rope::from_scm(rope).unwrap();
-        Scm::new_string(rope.to_string().as_str())
+        Scm::new_string(rope.to_string())
     })
     .map_err(|_| "Rust panic encountered on rope->string.")
     .scm_unwrap()
@@ -271,6 +271,27 @@ extern "C" fn scm_rope_line_length(rope: Scm, line: Scm) -> Scm {
         }
         let line = rope.line(line_idx);
         Scm::new_u32(line.len_chars() as u32)
+    })
+    .map_err(|_| "Rust panic encountered on rope-length.")
+    .scm_unwrap()
+}
+
+extern "C" fn scm_rope_line_to_cursor(rope: Scm, line: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm(rope).unwrap();
+        let line_idx = line.to_u32() as usize;
+        let cursor = rope.try_line_to_char(line_idx).scm_unwrap();
+        Scm::new_u32(cursor as u32)
+    })
+    .map_err(|_| "Rust panic encountered on rope-length.")
+    .scm_unwrap()
+}
+
+extern "C" fn scm_rope_cursor_to_line(rope: Scm, cursor: Scm) -> Scm {
+    catch_unwind(|| unsafe {
+        let rope = Rope::from_scm(rope).unwrap();
+        let line = rope.try_char_to_line(cursor.to_u32() as usize).scm_unwrap();
+        Scm::new_u32(line as u32)
     })
     .map_err(|_| "Rust panic encountered on rope-length.")
     .scm_unwrap()
@@ -327,42 +348,6 @@ extern "C" fn scm_rope_set_language(rope: Scm, language: Scm) -> Scm {
     Scm::UNDEFINED
 }
 
-extern "C" fn scm_rope_cursor_to_position(rope: Scm, cursor: Scm) -> Scm {
-    catch_unwind(|| unsafe {
-        let rope = Rope::from_scm(rope).unwrap();
-        let cursor = cursor.to_u32() as usize;
-        if cursor >= rope.len_chars() {
-            return Scm::FALSE;
-        }
-        let row = rope.char_to_line(cursor);
-        let col = cursor - rope.line_to_char(row);
-        Scm::cons(Scm::new_u32(row as u32), Scm::new_u32(col as u32))
-    })
-    .map_err(|_| "Rust panic encountered on rope-cursor->position.")
-    .scm_unwrap()
-}
-
-extern "C" fn scm_rope_position_to_cursor(rope: Scm, position: Scm) -> Scm {
-    catch_unwind(|| unsafe {
-        let rope = Rope::from_scm(rope).unwrap();
-        let (row, col) = (
-            position.car().to_u32() as usize,
-            position.cdr().to_u32() as usize,
-        );
-        let line_count = rope.len_lines();
-        if row >= line_count {
-            return Scm::FALSE;
-        }
-        let line_length = rope.line(row).len_chars();
-        if col >= line_length {
-            return Scm::FALSE;
-        }
-        let cursor = rope.line_to_char(row) + col;
-        Scm::new_u32(cursor as u32)
-    })
-    .map_err(|_| "Rust panic encountered on rope-position->cursor.")
-    .scm_unwrap()
-}
 
 #[cfg(test)]
 mod tests {
