@@ -14,5 +14,4 @@ A (Guile) Scheme configured IDE. Heavily inspired by Emacs.
 
 ## Building, Running, and Testing
 
-See `.github/workflows/testing.yml` and `Makefile` for building and
-testing recipes.
+See `.github/workflows/testing.yml` building and testing recipes.
