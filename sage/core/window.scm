@@ -26,8 +26,9 @@
                       (area (rect:make-rect 0 0 0 0))
                       (features '()))
   "Make a new window."
-  (let ((mutable-features (map (lambda (p) (cons (car p) (cdr p))) features)))
-    (%make-window buffer area mutable-features)))
+  (define mutable-features (map (lambda (p) (cons (car p) (cdr p)))
+                                features))
+  (%make-window buffer area mutable-features))
 
 (define* (window-feature window feature)
   "Get the value of a specific feature for a window or #f if it is not present."

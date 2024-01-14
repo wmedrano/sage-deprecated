@@ -39,18 +39,18 @@
 
 (define* (buffer-insert-at-cursor! buffer string-or-char)
   "Insert a string or character at the cursor position."
-  (let ((rope   (buffer-rope buffer))
-        (cursor (buffer-cursor buffer)))
-    (buffer-set-cursor! buffer
-                        (rope:rope-insert! rope cursor string-or-char))))
+  (define rope (buffer-rope buffer))
+  (define cursor (buffer-cursor buffer))
+  (buffer-set-cursor! buffer
+                      (rope:rope-insert! rope cursor string-or-char)))
 
 (define* (buffer-delete-char-before-cursor! buffer)
   "Delete the cursor that is right before the cursor."
-  (and-let* ((rope   (buffer-rope buffer))
-             (cursor (buffer-cursor buffer))
-             (valid? (> cursor 0))
-             (start  (- cursor 1))
-             (end    cursor))
+  (and-let* ((cursor (buffer-cursor buffer))
+             (valid? (> cursor 0)))
+    (define rope (buffer-rope buffer))
+    (define start (- cursor 1))
+    (define end cursor)
     (rope:rope-replace! rope start end "")
     (buffer-set-cursor! buffer (- cursor 1))))
 
@@ -59,13 +59,13 @@
 
 If this reaches past the current row, then it continues to the next
 row."
-  (and-let* ((raw-cursor  (+ (buffer-cursor buffer) col-count))
-             (rope-length (rope:rope-length (buffer-rope buffer)))
-             (cursor      (cond
-                           ((< raw-cursor 0) 0)
-                           ((< raw-cursor rope-length) raw-cursor)
-                           ((> rope-length 0) (- rope-length 1))
-                           (else 0))))
+  (and-let* ((raw-cursor  (+ (buffer-cursor buffer) col-count)))
+    (define cursor (cond
+                    ((< raw-cursor 0) 0)
+                    ((< raw-cursor rope-length) raw-cursor)
+                    ((> rope-length 0) (- rope-length 1))
+                    (else 0)))
+    (define rope-length (rope:rope-length (buffer-rope buffer)))
     (buffer-set-cursor! buffer cursor)))
 
 (define* (%clamp value min-value max-value)
@@ -80,17 +80,17 @@ row."
 TODO: Preserve the column when switching to a line that is shorter
 than the current column."
   (and-let* ((rope             (buffer-rope buffer))
-             (current-cursor   (buffer-cursor buffer))
-             (current-row      (rope:rope-cursor->line rope current-cursor))
-             (current-col      (- current-cursor
-                                  (rope:rope-line->cursor rope current-row)))
-             (row              (%clamp (+ current-row row-count)
-                                       0
-                                       (max 0 (- (rope:rope-line-count rope) 1))))
-             (row-length       (rope:rope-line-length rope row))
-             (col              (%clamp current-col
-                                       0
-                                       (max 0 (- row-length 1))))
-             (cursor           (+ (rope:rope-line->cursor rope row)
-                                  col)))
+             (current-cursor   (buffer-cursor buffer)))
+    (define current-row      (rope:rope-cursor->line rope current-cursor))
+    (define current-col      (- current-cursor
+                                (rope:rope-line->cursor rope current-row)))
+    (define row              (%clamp (+ current-row row-count)
+                                     0
+                                     (max 0 (- (rope:rope-line-count rope) 1))))
+    (define row-length       (rope:rope-line-length rope row))
+    (define col              (%clamp current-col
+                                     0
+                                     (max 0 (- row-length 1))))
+    (define cursor           (+ (rope:rope-line->cursor rope row)
+                                col))
     (buffer-set-cursor! buffer cursor)))

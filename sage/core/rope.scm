@@ -21,12 +21,12 @@
                     (text "")
                     (language ""))
   "Create a new rope."
-  (let ((rope (ffi:make-rope)))
-    (unless (equal? text "")
-      (rope-set-string! rope text))
-    (unless (equal? language "")
-      (rope-set-language! rope language))
-    rope))
+  (define rope (ffi:make-rope))
+  (unless (equal? text "")
+    (rope-set-string! rope text))
+  (unless (equal? language "")
+    (rope-set-language! rope language))
+  rope)
 
 (define* (rope-set-language! rope language)
   "Set the language for the rope. Valid values are empty string for no

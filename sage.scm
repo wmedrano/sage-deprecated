@@ -26,21 +26,21 @@
 
 (define* (handle-special-events! window buffer event)
   "Handle all events."
-  (let* ((key-code  (assoc-ref event 'key-code))
-         (ctrl?     (assoc-ref event 'ctrl?))
-         (alt?      (assoc-ref event 'alt?)))
-    (when (and (not ctrl?) alt?)
-      (cond
-       ((equal? key-code #\x) (modal:select-command!
-                               `(("open-file"     . ,modal:open-file!)
-                                 ("switch-buffer" . ,modal:switch-buffer!)
-                                 ("view-logs"     . ,switch-to-log-buffer!)
-                                 ("clear-logs"    . ,log:clear-logs!)
-                                 ("quit"          . ,state:quit!))))))
-    (when (and ctrl? (not alt?))
-      (cond
-       ((equal? key-code #\o) (modal:open-file!))
-       ((equal? key-code #\c) (state:quit!))))))
+  (define key-code (assoc-ref event 'key-code))
+  (define ctrl? (assoc-ref event 'ctrl?))
+  (define alt? (assoc-ref event 'alt?))
+  (when (and (not ctrl?) alt?)
+    (cond
+     ((equal? key-code #\x) (modal:select-command!
+                             `(("open-file"     . ,modal:open-file!)
+                               ("switch-buffer" . ,modal:switch-buffer!)
+                               ("view-logs"     . ,switch-to-log-buffer!)
+                               ("clear-logs"    . ,log:clear-logs!)
+                               ("quit"          . ,state:quit!))))))
+  (when (and ctrl? (not alt?))
+    (cond
+     ((equal? key-code #\o) (modal:open-file!))
+     ((equal? key-code #\c) (state:quit!))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main.

@@ -19,9 +19,9 @@
   (define (item-matches-all-subqueries? item-string subqueries)
     (every (lambda (subquery) (string-contains item-string subquery))
            subqueries))
-  (let* ((subqueries (string-split query #\space)))
-    (filter (lambda (item) (item-matches-all-subqueries? (item->string item) subqueries))
-            items)))
+  (define subqueries (string-split query #\space))
+  (filter (lambda (item) (item-matches-all-subqueries? (item->string item) subqueries))
+          items))
 
 (define* (modal-area frame-width frame-height)
   (rect:make-rect (* frame-width  1/8)
@@ -33,11 +33,11 @@
   (define* (%make-modal-string prompt query matches)
     (define (format-item item)
       (string-concatenate (list " " (item->string item))))
-    (let ((prompt-line (string-concatenate (list prompt query)))
-          (item-lines  (map format-item matches)))
-      (string-join (cons prompt-line
-                         (if (null? item-lines) '("") item-lines))
-                   "\n")))
+    (define prompt-line (string-concatenate (list prompt query)))
+    (define item-lines  (map format-item matches))
+    (string-join (cons prompt-line
+                       (if (null? item-lines) '("") item-lines))
+                 "\n"))
   (define query "")
   (define matches items)
   (define target-window (state:focused-window))
@@ -63,24 +63,24 @@
     (when (pair? matches)
       (on-select (car matches))))
   (define (handle-event! w b event)
-    (let* ((key-code  (assoc-ref event 'key-code))
-           (ctrl?     (assoc-ref event 'ctrl?))
-           (alt?      (assoc-ref event 'alt?))
-           (mod?      (or ctrl? alt?))
-           (no-mod?   (not mod?)))
-      (when no-mod?
-        (cond
-         ((equal? key-code #\newline)
-          (when (pair? matches) (select!)))
-         ((char? key-code)
-          (set-query! (string-append query
-                                     (list->string (list key-code)))))
-         ((and (equal? key-code "<backspace>") (> (string-length query) 0))
-          (set-query! (substring query
-                                 0
-                                 (- (string-length query) 1))))
-         ((equal? key-code "<esc>")
-          (cleanup!))))))
+    (define key-code  (assoc-ref event 'key-code))
+    (define ctrl? (assoc-ref event 'ctrl?))
+    (define alt? (assoc-ref event 'alt?))
+    (define mod? (or ctrl? alt?))
+    (define no-mod? (not mod?))
+    (when no-mod?
+      (cond
+       ((equal? key-code #\newline)
+        (when (pair? matches) (select!)))
+       ((char? key-code)
+        (set-query! (string-append query
+                                   (list->string (list key-code)))))
+       ((and (equal? key-code "<backspace>") (> (string-length query) 0))
+        (set-query! (substring query
+                               0
+                               (- (string-length query) 1))))
+       ((equal? key-code "<esc>")
+        (cleanup!)))))
   (add-hook! (buffer:buffer-event-hook buffer) handle-event!)
   (define (handle-resize! width height)
     (window:window-set-area! window (modal-area width height)))
