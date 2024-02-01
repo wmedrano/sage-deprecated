@@ -1,5 +1,7 @@
 # Sage
 
+Update: Retrying using a Scheme built for Rust: https://github.com/mattwparas/steel.
+
 WIP: Sage is a work in progress, with the primary purpose being
 educational. Do not expect this to go far.
 
